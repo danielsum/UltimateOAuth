@@ -1120,14 +1120,14 @@ class UltimateOAuth {
 	
 	# GET oauth/authenticate
 	public function getAuthenticateURL() {
-		$params['oauth_token'] = $this->request_token;
+		$params = array('oauth_token'=>$this->request_token);
 		$q = http_build_query($params,'','&');
 		return $this->authening_url_header.'oauth/authenticate?'.$q;
 	}
 	
 	# GET oauth/authorize
 	public function getAuthorizeURL() {
-		$params['oauth_token'] = $this->request_token;
+		$params = array('oauth_token'=>$this->request_token);
 		$q = http_build_query($params,'','&');
 		return $this->authening_url_header.'oauth/authorize?'.$q;
 	}
