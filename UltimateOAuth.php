@@ -119,7 +119,7 @@
 //  $uom->addjob($to_0,'BgOAuthGetToken',array('id_0','pw_0'));
 //  $uom->addjob($to_1,'BgOAuthGetToken',array('id_1','pw_1'));
 //  $uom->addjob($to_2,'BgOAuthGetToken',array('id_2','pw_2'));
-//  $res = $uom->exec;
+//  $res = $uom->exec();
 //  var_dump($res);
 //
 
