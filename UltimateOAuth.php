@@ -114,7 +114,7 @@
 //  $consumer_key    = 'xxxxxxxxxx';
 //  $consumer_secret = 'yyyyyyyyyy';
 //  $to = new UltimateOAuth($consumer_key,$consumer_secret);
-//  $to_0 = $to_1 = $to_2 = $to;
+//  $to_0 = clone ($to_1 = clone ($to_2 = clone $to));
 //  $uom = new UltimateOAuthMulti();
 //  $uom->addjob($to_0,'BgOAuthGetToken',array('id_0','pw_0'));
 //  $uom->addjob($to_1,'BgOAuthGetToken',array('id_1','pw_1'));
