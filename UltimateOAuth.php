@@ -1463,19 +1463,6 @@ class UltimateOAuth {
 		$params = $_params;
 	}
 	
-	// スカラー型か判断
-	private static function castable($var) {
-		if (is_object($var) || is_array($var) || is_resource($var))
-			return false;
-		return true;
-	}
-	private static function castable_array($array) {
-		foreach ($array as $var)
-		if (is_object($var) || is_array($var) || is_resource($var))
-			return false;
-		return true;
-	}
-	
 	// エラーチェック
 	private function construct_error() {
 		return !self::castable_array(array(
@@ -1484,6 +1471,19 @@ class UltimateOAuth {
 			$this->request_token  , $this->request_token_secret ,
 			$this->oauth_verifier
 		));
+	}
+	
+	// スカラー型か判断
+	public static function castable($var) {
+		if (is_object($var) || is_array($var) || is_resource($var))
+			return false;
+		return true;
+	}
+	public static function castable_array($array) {
+		foreach ($array as $var)
+		if (is_object($var) || is_array($var) || is_resource($var))
+			return false;
+		return true;
 	}
 	
 	// メンバ変数取得
@@ -1515,7 +1515,8 @@ class UltimateOAuthMulti {
 	# ジョブ追加
 	// 
 	// 第1引数 - UltimateOAuthオブジェクト
-	// 第2引数 - UltimateOAuthクラス内のPublicメソッド名（fromJSON・toJSON・get_object_varsを除く）
+	// 第2引数 - UltimateOAuthクラス内のPublicメソッド名
+	// 　 　　    （fromJSON・toJSON・castable・castable_array・get_object_varsを除く）
 	// 第3引数 - パラメータ
 	// 
 	// ※ 第1引数は参照渡しです（NULLなどを渡すと例外が発生します）
@@ -1656,7 +1657,7 @@ class UltimateOAuthMulti {
 				$property->params             = new stdClass;
 			$property->params = (array)$property->params;
 			$obj = new $className($property->consumer_key,$property->consumer_secret,$property->oauth_token,$property->oauth_token_secret,$property->oauth_verifier);
-			if ($property->method==='get_object_vars' || $property->method==='fromJSON' || $property->method==='toJSON' || !is_callable(array($obj,$property->method)))
+			if (in_array($property->method,array('fromJSON','toJSON','get_object_vars','castable','castable_array'),true) || !is_callable(array($obj,$property->method)))
 				echo '{"errors":[{"message":"Can\'t call \''.$property->method.'\'","code":-1}]}';
 			else
 				echo json_encode(call_user_func(array($obj,$property->method),$property->params));
