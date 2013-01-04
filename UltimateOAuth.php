@@ -1,105 +1,207 @@
 <?php
 
 //****************************************************************
-//****************** UltimateOAuth Version 2.0 *******************
+//****************** UltimateOAuth Version 2.1 *******************
 //****************************************************************
 //
 //                                            作者: @To_aru_User
 //
-// ****** 概要 ******
-// 
-// SimpleOAuth, BgOAuth, BgOAuthMulti の機能を結合させ、
-// 更に利便性の向上を図ったライブラリです。
-// これ1つで何でも出来ます。
-// 
-// ・https://dev.twitter.com/docs/api/1.1 に記載されている順番に則っています(2013/1/3現在)。
-// 　Streaming以外の全てのエンドポイントに対応しております。
-// 　このライブラリの独自メソッド
-// 　- BgOAuthGetToken
-// 　　　usernameとpasswordから疑似的にxAuth認証と同等にアクセストークンを取得可能です。
-// 　- toJSON・fromJSON
-// 　　　toJSONメソッドの動的コールで復元に必要な情報をJSON文字列化して返します。
-// 　　　formJSONメソッドの静的コールでJSON文字列を渡すと復元されたオブジェクトを返します。
-// 
-// ・バイナリを扱うパラメータのうち、それがバイナリでなく
-// 　ファイルパスを表すものの場合、キーの頭に「@」を付けてください。(例：@media[] @image)
-// 
-// ・非同期リクエストを行いたい場合、
-// 　$waitResponseにfalseを指定するようにしてください。
-// 　指定可能なメソッドが限られているので確認しておいてください。
-// 
-// ・リクエストに失敗した場合は必ず
-// 　　エラーコード: $res->errors[0]->code
-// 　　メッセージ: $res->errors[0]->message
-// 　の形のオブジェクトを返します。
-// 　クライアント側のエラーの場合、コードは全て-1です。
-// 　$waitResponseがfalseの場合はnullを返します。
-// 
-// ・定数JSON_DECODE_DEFAULT_ASSOCの値をtrueに設定すると、
-// 　返り値がオブジェクトを含まず、全て連想配列形式になります。
-// 
-// ・トークン取得系エンドポイントにアクセスして取得に成功したとき、
-// 　自動的に自身のメンバ変数を更新します。
-// 
-// ・「OAuth.php」やcURLに依存しません。
-// 　但し、BgOAuthMultiクラスを利用する場合にのみcURLが必要です。
-// 　json_decodeの実装されているPHP5.2以降のほとんどの環境で
-// 　動作すると思われます。
-// 　構文はPHP5.2への互換性に考慮して、
-// 　- 無名関数を直接利用せずにcreate_function関数を利用
-// 　- 配列は全てarray構文で宣言
-// 　- 配列を返す関数の返り値に直接添え字を付加しない
-// 　という仕様にしています。
-// 
-// ****** バージョンアップでの変更点 ******
-// 
-// ★…非常に重要な変更
-// ●…重要な変更
 //
-// -Version2.0
+// ******  概　要  ******
 // 
-// ・POSTで外部からリクエストを受け取って実行する可能性があるので、例外対策を徹底した。
-// 　無駄なエラー制御演算子を削除した。
-// 　名前空間を汚さないように構造を最適化した。
+// TwitterAPIエンドポイントとの通信に関することならこれ1つで全てこなせるライブラリです。
+// PHP5.2以上で動作します。UltimateOAuthMultiクラス以外はcURLに依存しません。
+//
+// https://dev.twitter.com/docs/api/1.1 に記載されている順番に則っています(2013/1/5現在)。
+// Streaming以外の全てのエンドポイントに加え、アクティビティにも対応しております。
+//
+// 独自にバックグラウンドOAuth認証(疑似xAuth)でアクセストークンを取得するメソッド、
+// KeitaiWeb経由で非公開アカウントのフォローリクエストの承認・拒否をするメソッドも独自に実装しております。
+// エンドポイントにアクセスするメソッドは全て、パラメータの渡し方を
+// 第1引数に「キーと値を対応させた連想配列」を渡す、というデザインで統一しております。
 // 
-// ★OAuthRequestメソッドとOAuthRequestImageメソッドをPrivateにして外部からコールできないようにした。
-// 　その代わり、トークン取得を除くPOST系の全Publicメソッドで第2引数に$waitResponseを渡せるようにした。
 // 
-// ★BgOAuthGetTokenの引数の渡し方を他のメソッド同様に配列で渡すように変更した。
-// 　これでUltimateOAuthMultiからコール可能なメソッド（get_object_vars・fromJSON・toJSON以外のPublicメソッド）
-// 　の引数が$params1つになるように変更した。
-// 　それに伴い、実際にコールに使用する関数をcall_user_func_arrayからcall_user_funcに変更した。
 // 
-// ●UltimateOAuthMultiのレスポンスをデコードして、access_tokenやrequest_tokenが含まれていた場合に
-// 　呼び出し側スクリプトのオブジェクトにも反映させるように変更した。
+// ****** 使用方法 ******
+//
 // 
-// ●UltimateOAuthMultiでexecした後にaddjobした内容を全て消去するように変更した。
+// ・用語
+// ＊【エラーオブジェクト】
+// 　　エラーコード: $response->errors[0]->code    = エラーコード;
+// 　　メッセージ　: $response->errors[0]->message = 'メッセージ';
+// ＊【簡易リザルトオブジェクト】
+// 　　メッセージ　: $response->result             = 'メッセージ';
 // 
-// ★全Publicメソッドの返り値をオブジェクトに統一した。
-// 　（Versin1.0では一部ArrayやStringを含んでいた）
 // 
-// ●全プロパティをPrivateに変更した。
-// 　その代わりfromJSONメソッドとtoJSONメソッドを追加し、シリアル化とオブジェクト復元が容易に行えるようにした。
+// 　+++ UltimateOAuth の定数設定(右オペランドにデフォルト値を記載) +++
 // 
-// ●一部のメソッドの名前を変更した。
+// 　　　JSON_DECODE_DEFAULT_ASSOC  = false
+// 　　　　json_decode関数の第2引数の値。trueを指定するとあらゆるオブジェクトが全て連想配列に変換されて返されます。
 // 
-// ●JSON_DECODE_DEFAULT_ASSOC定数で、このライブラリで外部的に使用するメソッドの中で使われる、
-// 　json_decode関数の第2引数の値を指定できるようにした。
+// 　　　DEFAULT_STRINGIFY_IDS      = true
+// 　　　　パラメータにstringify_idsを渡せるものに関して、それらのデフォルト値を設定します。
+// 　　　　trueにするとidがIntegerではなくStringで返されます。
 // 
-// ・POST_oauth_access_tokenで直接oauth_verifierを渡せるようにした。
-// 　（Version1.0ではオブジェクトを作り直す必要があった）
+// 　　　URL_HEADER                 = 'https://api.twitter.com/1.1/'
+// 　　　AUTHENING_URL_HEADER       = 'https://api.twitter.com/'    
+// 　　　OAUTH_URL_HEADER           = 'https://api.twitter.com/'    
+// 　　　ACTIVITY_URL_HEADER        = 'https://api.twitter.com/i/'  
+// 　　　　このあたりは基本的に編集不要です。httpsではなくhttpを利用したい場合などに変更してください。
 // 
-// ・$paramsにオブジェクトを渡した場合、配列に変換するようにした。
-// 　（Version1.0では配列しか受け付けなかった）
 // 
-// ・絶対URL取得メソッドを改良した。
-// 　引用 http://www.programming-magic.com/20080628015044/
+// 　+++ UltimateOAuth のPublicメソッド +++
 // 
-// ・その他数ヵ所修正
+// 　　- コンストラクタ
+// 　　　　$consumer_keyと$consumer_secretは必須です。
+// 　　　　$oauth_token,$oauth_token_secret,$oauth_verifierは必要に応じて渡してください。
+// 　　　　アクセストークンとリクエストトークンは自動で判別します。
 // 
-// ****** その他 ******
+// 　　- toJSON・fromJSON
+// 　　　　toJSONメソッドの動的コールでUltimateOAuthオブジェクト復元に必要な情報をJSON文字列化して返します。
+// 　　　　formJSONメソッドの静的コールで第1引数にJSON文字列を渡すと、
+// 　　　　成功時に復元されたUltimateOAuthオブジェクトを返します。失敗時にはnullを返します。
 // 
-// ・FollwerRequestライブラリに実装している機能の一部もこちらに移植するかもしれない。
+// 　　- BgOAuthGetToken
+// 　　　　疑似的にxAuth認証と同等にアクセストークンを取得可能できます。
+// 　　　　　$params = array(
+// 　　　　　　'username'=>'スクリーンネーム又はメールアドレス',
+// 　　　　　　'password'=>'パスワード'
+// 　　　　　);
+// 　　　　の形で第1引数にパラメータを渡すと、成功時に
+// 　　　　　$response->access_token        = 'アクセストークン';
+// 　　　　　$response->access_token_secret = 'アクセストークンシークレット';
+// 　　　　の形でレスポンスを返します。
+// 　　　　このとき、使用したUltimateOAuthオブジェクトの中に取得したトークンが自動的に設定されます。
+// 　　　　失敗時にはエラーオブジェクトを返します。
+// 
+// 　　- getAuthenticateURL・getAuthorizeURL
+// 　　　　成功時に
+// 　　　　　$response->url = 'URL';
+// 　　　　の形でレスポンスを返します。
+// 　　　　失敗時にはエラーオブジェクトを返します。
+// 
+// 　　- POST_oauth_request_token
+// 　　　　成功時に
+// 　　　　　$response->request_token        = 'リクエストトークン';
+// 　　　　　$response->request_token_secret = 'リクエストトークンシークレット';
+// 　　　　の形でレスポンスを返します。
+// 　　　　このとき、使用したUltimateOAuthオブジェクトの中に取得したトークンが自動的に設定されます。
+// 　　　　失敗時にはエラーオブジェクトを返します。
+// 
+// 　　- POST_oauth_access_token
+// 　　　　成功時に
+// 　　　　　$response->access_token        = 'アクセストークン';
+// 　　　　　$response->access_token_secret = 'アクセストークンシークレット';
+// 　　　　の形でレスポンスを返します。
+// 　　　　このとき、使用したUltimateOAuthオブジェクトの中に取得したトークンが自動的に設定されます。
+// 　　　　なおこちらは、再度オブジェクトを作り直さなくても
+// 　　　　　$params = array(
+// 　　　　　　'oauth_verifier'=>'ベリファイア'
+// 　　　　　);
+// 　　　　の形でパラメータを渡してベリファイアを設定することができます。
+// 　　　　失敗時にはエラーオブジェクトを返します。
+// 
+// 　　- kWeb_login
+// 　　　　KeitaiWebにログインします。
+// 　　　　　$params = array(
+// 　　　　　　'username'=>'スクリーンネーム又はメールアドレス',
+// 　　　　　　'password'=>'パスワード'
+// 　　　　　);
+// 　　　　の形で第1引数にパラメータを渡してください。
+// 　　　　成功時に簡易リザルトメッセージオブジェクト、
+// 　　　　失敗時にエラーオブジェクトを返します。
+// 　　　　このログイン状態はformJSON・toJSONで復元・保存することが出来ません。
+// 
+// 　　- kWeb_incoming
+// 　　　　KeitaiWebにログインした状態でこのメソッドをコールすると、
+// 　　　　成功時に自分へのフォローをリクエストしているユーザーのうち、先頭カーソル(-1)で表示しきれる分の
+// 　　　　簡易ユーザーオブジェクトを配列で取得できます。
+// 　　　　これで得られる簡易ユーザーオブジェクトは、
+// 　　　　　$obj->id, $obj->id_str, $obj->screen_name, $obj->name, $obj->profile_image_url
+// 　　　　から構成されています。
+// 　　　　プロフィール画像はKeitaiWebサイズのため、通常より小さめになっています。
+// 　　　　失敗時にエラーオブジェクトを返します。
+//
+// 　　　　※ 全てのフォローリクエストを正しく取得したい場合はGET_friendships_incomingメソッドをご利用ください。
+// 　　　　
+// 　　- kWeb_accept・kWeb_deny
+// 　　　　(数字のみの)ユーザーIDを対象に、フォローリクエストを承認・拒否します。
+// 　　　　KeitaiWebにログインした状態で、
+// 　　　　　$params = array(
+// 　　　　　　'user_id'=>'ユーザーID'
+// 　　　　　);
+// 　　　　の形で第1引数にパラメータを渡してこのメソッドをコールすると、
+// 　　　　成功時に簡易リザルトメッセージオブジェクト、
+// 　　　　失敗時にエラーオブジェクトを返します。
+// 　　　　第2引数にレスポンスを待機するかどうかをブール値で渡すことが出来ます。
+// 　　　　デフォルトではtrueです。レスポンス非待機時にはnullが返されることがあります。
+//
+// 　　- kWeb_acceptAll
+// 　　　　全てのフォローリクエストを承認します。
+// 　　　　KeitaiWebにログインした状態でこのメソッドをコールすると、
+// 　　　　成功時に簡易リザルトメッセージオブジェクト、
+// 　　　　失敗時にエラーオブジェクトを返します。
+// 　　　　第2引数にレスポンスを待機するかどうかをブール値で渡すことが出来ます。
+// 　　　　デフォルトではtrueです。レスポンス非待機時にはnullが返されることがあります。
+// 
+// 　　- その他の名前が「GET_」「POST_」で始まる多くのメソッド
+// 　　　　　$params = array(
+// 　　　　　　'パラメータ名1'=>'値1',
+// 　　　　　　'パラメータ名2'=>'値2',
+// 　　　　　　'パラメータ名3'=>'値3',
+// 　　　　　　…
+// 　　　　　);
+// 　　　　の形でTwitterデベロッパサイトの公式ドキュメントの通りに、第1引数に連想配列でパラメータを渡します。
+// 　　　　「POST_」のものに関しては、第2引数にレスポンスを待機するかどうかをブール値で渡すことが出来ます。
+// 　　　　デフォルトではtrueです。
+// 　　　　レスポンス待機時且つ成功時にはレスポンス例として示されているJSONがデコードされた状態で返されます。
+// 　　　　レスポンス待機時且つ失敗時にはエラーオブジェクトを返します。
+// 　　　　レスポンス非待機時にはnullが返されることがあります。
+//
+// 　　- castable・castable_array・get_object_vars
+// 　　　　内部的に使用します。
+// 
+// 
+// 　+++ UltimateOAuthMulti のPublicメソッド +++
+// 　このクラスはcURLが使えないと利用できません
+// 
+// 　　- コンストラクタ
+// 　　　　引数は不要です。
+// 
+// 　　- addjob
+// 　　　　マルチリクエストのジョブを追加します。
+// 　　　　　第1引数 - UltimateOAuthオブジェクト
+// 　　　　　第2引数 - UltimateOAuthクラス内のPublicメソッド名
+// 　　　　　　　　　　　（fromJSON・toJSON・castable・castable_array・get_object_varsを除く）
+// 　　　　　第3引数 - 連想配列形式のパラメータ
+// 　　　　　　※ 第1引数は参照渡しです。（変数でなく値を渡すと例外が発生します）
+// 　　　　　　※ 「アクセストークン取得→ツイート」など、明確に順番が決まっているものに関しては
+// 　　　　　　　 同時に並列実行することは避けてください。（そうした場合の挙動は未定義です）
+// 
+// 　　- exec
+// 　　　　追加されたマルチリクエストのジョブを実行します。引数は不要です。
+// 　　　　成功時に、追加された順番でレスポンスを配列で返します。
+// 　　　　一度execするとaddjobしたものは消去され、まっさらな状態に戻ります。
+// 　　　　無料レンタルサーバーなどではこのメソッドがIPブロックにより、
+// 　　　　エラーオブジェクトしか返ってこない状態に陥ることがあります。
+// 　　　　自前のサーバーでの使用を推奨します。
+// 
+// 
+// 
+// ****** 注意点 ******
+// 
+// ★バイナリを扱うパラメータのうち、それがバイナリでなく
+// 　ファイルパスを表すものの場合、 "キーの頭" に「@」を付けてください。(例：@media[] @image)
+// 
+// ・レスポンスのルートがオブジェクトで返されるメソッドと配列で返されるメソッドがあります。
+// 　JSON_DECODE_DEFAULT_ASSOCがfalseに設定されているときには、例外処理の方法が異なるので注意が必要です。
+// 　成功時に配列・失敗時にオブジェクト、といった形のレスポンス場合、if文の条件式を
+// 　　empty($response->errors)
+// 　ではなく
+// 　　is_array($response)
+// 　としなければ、NOTICEエラーを引き起こす原因となります。
+// 
+// 
 // 
 // ****** サンプルコード ******
 // 
@@ -112,7 +214,7 @@
 // 
 // ●ホームタイムラインを取得して実際に表示してみる
 //  $timeline = $to->GET_statuses_home_timeline();
-//  if (empty($timeline->errors)) {
+//  if (is_array($timeline)) {
 //    foreach ($timeline as $tweet) {
 //      if (isset($tweet->retweeted_status)) {
 //        $retweet = $tweet;
@@ -188,10 +290,7 @@
 //  var_dump($res);
 // 
 
-# json_decodeの第2パラメータ指定
-define('JSON_DECODE_DEFAULT_ASSOC',false);
-
-/**** UltimateOAuth基本クラス *****/
+/***** UltimateOAuth基本クラス *****/
 
 class UltimateOAuth {
 	
@@ -202,12 +301,12 @@ class UltimateOAuth {
 	//***** General *****//
 	
 	# 設定
-	private $url_header = 'https://api.twitter.com/1.1/';
-	private $authening_url_header = 'https://api.twitter.com/';
-	private $oauth_url_header = 'https://api.twitter.com/';
-	private $activity_url_header = 'https://api.twitter.com/i/';
-	private $default_stringify_ids = true;
-	private $trim_user_in_user_timeline = true;
+	const JSON_DECODE_DEFAULT_ASSOC  = false                         ;
+	const DEFAULT_STRINGIFY_IDS      = true                          ;
+	const URL_HEADER                 = 'https://api.twitter.com/1.1/';
+	const AUTHENING_URL_HEADER       = 'https://api.twitter.com/'    ;
+	const OAUTH_URL_HEADER           = 'https://api.twitter.com/'    ;
+	const ACTIVITY_URL_HEADER        = 'https://api.twitter.com/i/'  ;
 	
 	# コンストラクタ
 	public function __construct($consumer_key,$consumer_secret,$oauth_token='',$oauth_token_secret='',$oauth_verifier='') {
@@ -226,8 +325,10 @@ class UltimateOAuth {
 				$this->request_token_secret = '';
 			}
 		}
-		$this->oauth_verifier  = $oauth_verifier;
-		$this->cookie = array();
+		$this->oauth_verifier       = $oauth_verifier;
+		$this->cookie               = array();
+		$this->cookie_k             = array();
+		$this->authenticity_token_k = '';
 	}
 	
 	# JSONから復元
@@ -235,10 +336,8 @@ class UltimateOAuth {
 		$obj = null;
 		if (self::castable($json))
 			$obj = json_decode($json);
-		if (!is_object($obj))
-			$obj = new stdClass;
-		$consumer_key         = isset($obj->consumer_key)         ? $obj->consumer_key         : '' ;
-		$consumer_secret      = isset($obj->consumer_secret)      ? $obj->consumer_secret      : '' ;
+		if (!is_object($obj) || !isset($obj->consumer_key) || !isset($obj->consumer_secret))
+			return null;
 		$access_token         = isset($obj->access_token)         ? $obj->access_token         : '' ;
 		$access_token_secret  = isset($obj->access_token_secret)  ? $obj->access_token_secret  : '' ;
 		$request_token        = isset($obj->request_token)        ? $obj->request_token        : '' ;
@@ -246,9 +345,9 @@ class UltimateOAuth {
 		$oauth_verifier       = isset($obj->oauth_verifier)       ? $obj->oauth_verifier       : '' ;
 		$className = __CLASS__;
 		if (!empty($access_token) && !empty($access_token_secret))
-			return new $className($consumer_key,$consumer_secret,$access_token,$access_token_secret);
+			return new $className($obj->consumer_key,$obj->consumer_secret,$access_token,$access_token_secret);
 		else
-			return new $className($consumer_key,$consumer_secret,$request_token,$request_token_secret,$oauth_verifier);
+			return new $className($obj->consumer_key,$obj->consumer_secret,$request_token,$request_token_secret,$oauth_verifier);
 	}
 	
 	# JSONに変換
@@ -272,32 +371,30 @@ class UltimateOAuth {
 	# GET statuses/mentions_timeline
 	public function GET_statuses_mentions_timeline($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'statuses/mentions_timeline.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/mentions_timeline.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET statuses/user_timeline
 	# ユーザーオブジェクトをデフォルトではidのみに簡略化
 	public function GET_statuses_user_timeline($params=array()) {
 		self::modParameters($params);
-		if (!isset($params['trim_user']) && $this->trim_user_in_user_timeline)
-			$params['trim_user'] = '1';
-		$res = $this->OAuthRequest($this->url_header.'statuses/user_timeline.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/user_timeline.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET statuses/home_timeline
 	public function GET_statuses_home_timeline($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'statuses/home_timeline.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/home_timeline.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET statuses/retweets_of_me
 	public function GET_statuses_retweets_of_me($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'statuses/retweets_of_me.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/retweets_of_me.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Tweets *****//
@@ -311,8 +408,8 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."statuses/retweets/{$id}.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/retweets/{$id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET statuses/show/:id
@@ -324,8 +421,8 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."statuses/show/{$id}.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/show/{$id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST statuses/destroy/:id
@@ -337,19 +434,19 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."statuses/destroy/{$id}.json",'POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/destroy/{$id}.json",'POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST statuses/update
 	public function POST_statuses_update($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'statuses/update.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/update.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST statuses/retweet/:id
@@ -361,33 +458,33 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."statuses/retweet/{$id}.json",'POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/retweet/{$id}.json",'POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST statuses/update_with_media
 	public function POST_statuses_update_with_media($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage($this->url_header.'statuses/update_with_media.json',$params,$waitResponse);
+		$res = $this->OAuthRequestImage(self::URL_HEADER.'statuses/update_with_media.json',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET statuses/oembed
 	public function GET_statuses_oembed($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage($this->url_header."statuses/retweet/{$id}.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequestImage(self::URL_HEADER."statuses/retweet/{$id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET search/tweets
 	public function GET_search_tweets($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage($this->url_header.'search/tweets.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequestImage(self::URL_HEADER.'search/tweets.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Dicrect Messages *****//
@@ -395,40 +492,40 @@ class UltimateOAuth {
 	# GET direct_messages
 	public function GET_direct_messages($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'direct_messages.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'direct_messages.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET direct_messages/sent
 	public function GET_direct_messages_sent($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'direct_messages/sent.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'direct_messages/sent.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET direct_messages_show
 	public function GET_direct_messages_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'direct_messages/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'direct_messages/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST direct_messages_destroy
 	public function POST_direct_messages_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'direct_messages/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'direct_messages/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST direct_messages_new
 	public function POST_direct_messages_new($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'direct_messages/new.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'direct_messages/new.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Friends & Followers *****//
@@ -440,10 +537,10 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		if (!isset($params['stringify_ids']) && $this->stringify_ids)
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
 			$params['stringify_ids'] = '1';
-		$res = $this->OAuthRequest($this->url_header.'friends/ids.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friends/ids.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET followers/ids
@@ -453,17 +550,17 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		if (!isset($params['stringify_ids']) && $this->stringify_ids)
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
 			$params['stringify_ids'] = '1';
-		$res = $this->OAuthRequest($this->url_header.'followers/ids.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'followers/ids.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET friendships/lookup
 	public function GET_friendships_lookup($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/lookup.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/lookup.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET friendships/incoming
@@ -473,10 +570,10 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		if (!isset($params['stringify_ids']) && $this->stringify_ids)
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
 			$params['stringify_ids'] = '1';
-		$res = $this->OAuthRequest($this->url_header.'friendships/incoming.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/incoming.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET friendships/outgoing
@@ -485,45 +582,45 @@ class UltimateOAuth {
 	public function GET_friendships_outgoing($params=array()) {
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		if (!isset($params['stringify_ids']) && $this->stringify_ids)
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
 			$params['stringify_ids'] = '1';
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/outgoing.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/outgoing.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST friendships/create
 	public function POST_friendships_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST friendships/destroy
 	public function POST_friendships_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST friendships/update
 	public function POST_friendships_update($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/update.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/update.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET friendships/show
 	public function GET_friendships_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'friendships/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET friends/list
@@ -532,8 +629,8 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'friends/list.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friends/list.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET followers/list
@@ -542,77 +639,77 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'followers/list.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'followers/list.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Users *****//
 	
 	# GET account/settings
 	public function GET_account_settings() {
-		$res = $this->OAuthRequest($this->url_header.'account/settings.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/settings.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET account/verify_credentials
 	public function GET_account_verify_credentials($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/verify_credentials.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/verify_credentials.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/settings
 	public function POST_account_settings($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/settings.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/settings.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_delivery_device
 	public function POST_account_update_delivery_device($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/update_delivery_device.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/update_delivery_device.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_profile
 	public function POST_account_update_profile($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/update_profile.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/update_profile.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_profile_background_image
 	public function POST_account_update_profile_background_image($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage($this->url_header.'account/update_profile_background_image.json',$params,$waitResponse);
+		$res = $this->OAuthRequestImage(self::URL_HEADER.'account/update_profile_background_image.json',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_profile_colors
 	public function POST_account_update_profile_colors($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/update_profile_colors.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/update_profile_colors.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_profile_image
 	public function POST_account_update_profile_image($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage($this->url_header.'account/update_profile_image.json',$params,$waitResponse);
+		$res = $this->OAuthRequestImage(self::URL_HEADER.'account/update_profile_image.json',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET blocks/list
@@ -621,8 +718,8 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'blocks/list.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'blocks/list.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET blocks/ids
@@ -632,87 +729,87 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		if (!isset($params['stringify_ids']) && $this->stringify_ids)
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
 			$params['stringify_ids'] = '1';
-		$res = $this->OAuthRequest($this->url_header.'blocks/ids.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'blocks/ids.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST blocks/create
 	public function POST_blocks_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'blocks/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'blocks/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST blocks/destroy
 	public function POST_blocks_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'blocks/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'blocks/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/lookup
 	public function GET_users_lookup($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/lookup.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/lookup.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/show
 	public function GET_users_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/search
 	public function GET_users_search($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/search.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/search.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/contributees
 	public function GET_users_contributees($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/contributees.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/contributees.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/contributors
 	public function GET_users_contributors($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/contributors.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/contributors.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/remove_profile_banner
 	public function POST_account_remove_profile_banner($dummy=array(),$waitResponse=true) {
-		$res = $this->OAuthRequest($this->url_header.'account/remove_profile_banner.json','POST',array(),$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/remove_profile_banner.json','POST',array(),$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST account/update_profile_banner
 	public function POST_account_update_profile_banner($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'account/update_profile_banner.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'account/update_profile_banner.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/profile_banner
 	public function GET_users_profile_banner($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/profile_banner.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/profile_banner.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Suggested Users *****//
@@ -722,10 +819,10 @@ class UltimateOAuth {
 	public function GET_users_suggestions($params=array()) {
 		self::modParameters($params);
 		if (isset($params['slug']))
-			$res = $this->OAuthRequest($this->url_header.'users/suggestions/'.$params['slug'].'.json','GET',$params);
+			$res = $this->OAuthRequest(self::URL_HEADER.'users/suggestions/'.$params['slug'].'.json','GET',$params);
 		else
-			$res = $this->OAuthRequest($this->url_header.'users/suggestions.json','GET',array());
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			$res = $this->OAuthRequest(self::URL_HEADER.'users/suggestions.json','GET',array());
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET users/suggestions/:slug/members
@@ -737,8 +834,8 @@ class UltimateOAuth {
 		} else {
 			$slug = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."users/suggestions/{$slug}/members.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER."users/suggestions/{$slug}/members.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Favorites *****//
@@ -746,26 +843,26 @@ class UltimateOAuth {
 	# GET favorites/list
 	public function GET_favorites_list($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'favorites/list.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'favorites/list.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST favorites/destroy
 	public function POST_favorites_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'favorites/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'favorites/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST favorites/create
 	public function POST_favorites_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'favorites/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'favorites/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Lists *****//
@@ -773,24 +870,24 @@ class UltimateOAuth {
 	# GET lists/list
 	public function GET_lists_list($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/list.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/list.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/statuses
 	public function GET_lists_statuses($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/statuses.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/statuses.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/members/destroy
 	public function POST_lists_members_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/members/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/memberships
@@ -799,8 +896,8 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'lists/memberships.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/memberships.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/subscribers
@@ -809,49 +906,49 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'lists/subscribers.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/subscribers.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/subscribers/create
 	public function POST_lists_subscribers_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/subscribers/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/subscribers/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/subscribers/show
 	public function GET_lists_subscribers_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/subscribers/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/subscribers/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/subscribers/destroy
 	public function POST_lists_subscribers_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/subscribers/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/subscribers/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/members/create_all
 	public function POST_lists_members_create_all($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/members/create_all.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members/create_all.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/members/show
 	public function GET_lists_members_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/members/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/members
@@ -860,51 +957,51 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'lists/members.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/members/create
 	public function POST_lists_members_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/members/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/destroy
 	public function POST_lists_destroy($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/destroy.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/destroy.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/update
 	public function POST_lists_update($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/update.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/update.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/create
 	public function POST_lists_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/show
 	public function GET_lists_show($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/show.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/show.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET lists/subscriptions
@@ -913,25 +1010,25 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (!isset($params['cursor']))
 			$params['cursor'] = '-1';
-		$res = $this->OAuthRequest($this->url_header.'lists/subscriptions.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/subscriptions.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST lists/members/destroy_all
 	public function POST_lists_members_destroy_all($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'lists/members/destroy_all.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'lists/members/destroy_all.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Saved Searches *****//
 	
 	# GET saved_searches/list
 	public function GET_saved_searches_list() {
-		$res = $this->OAuthRequest($this->url_header.'saved_searches/list.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'saved_searches/list.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET saved_searches/show/:id
@@ -943,17 +1040,17 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."saved_searches/show/{$id}.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER."saved_searches/show/{$id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST saved_searches/create
 	public function POST_saved_searches_create($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'saved_searches/create.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'saved_searches/create.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST saved_searches/show/:id
@@ -965,10 +1062,10 @@ class UltimateOAuth {
 		} else {
 			$id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."saved_searches/destroy/{$id}.json",'POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER."saved_searches/destroy/{$id}.json",'POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Places & Geo *****//
@@ -982,38 +1079,38 @@ class UltimateOAuth {
 		} else {
 			$place_id = '';
 		}
-		$res = $this->OAuthRequest($this->url_header."geo/id/{$place_id}.json",'GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER."geo/id/{$place_id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET geo/id/reverse_geocode
 	public function GET_geo_id_reverse_geocode($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'geo/id/reverse_geocode.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'geo/id/reverse_geocode.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET geo/search
 	public function GET_geo_search($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'geo/search.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'geo/search.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET geo/similar_places
 	public function GET_geo_similar_places($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'geo/similar_places.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'geo/similar_places.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# POST geo/place
 	public function POST_geo_place($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'geo/place.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'geo/place.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Trends *****//
@@ -1021,21 +1118,21 @@ class UltimateOAuth {
 	# GET trends/place
 	public function GET_trends_place($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'trends/place.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'trends/place.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET trends/available
 	public function GET_trends_available() {
-		$res = $this->OAuthRequest($this->url_header.'trends/available.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'trends/available.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET trends/closest
 	public function GET_trends_closest($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'trends/closest.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'trends/closest.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Spam Reporting *****//
@@ -1043,10 +1140,10 @@ class UltimateOAuth {
 	# POST users/report_spam
 	public function POST_users_report_spam($params=array(),$waitResponse=true) {
 		self::modParameters($params);
-		$res = $this->OAuthRequest($this->url_header.'users/report_spam.json','POST',$params,$waitResponse);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/report_spam.json','POST',$params,$waitResponse);
 		if (!$waitResponse)
 			return;
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** OAuth *****//
@@ -1054,28 +1151,28 @@ class UltimateOAuth {
 	# GET oauth/authenticate
 	public function getAuthenticateURL() {
 		if ($this->construct_error())
-			return json_decode('{"errors":[{"message":"Invalid parameters for __construct method","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode('{"errors":[{"message":"Invalid parameters for __construct method","code":-1}]}',self::JSON_DECODE_DEFAULT_ASSOC);
 		if (empty($this->request_token))
-			return json_decode('{"errors":[{"message":"No request_token","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode('{"errors":[{"message":"No request_token","code":-1}]}',self::JSON_DECODE_DEFAULT_ASSOC);
 		return json_decode(
 			'{"url":'.
-				json_encode($this->authening_url_header.'oauth/authenticate?oauth_token='.$this->request_token).
+				json_encode(self::AUTHENING_URL_HEADER.'oauth/authenticate?oauth_token='.$this->request_token).
 			'}',
-			JSON_DECODE_DEFAULT_ASSOC
+			self::JSON_DECODE_DEFAULT_ASSOC
 		);
 	}
 	
 	# GET oauth/authorize
 	public function getAuthorizeURL() {
 		if ($this->construct_error())
-			return json_decode('{"errors":[{"message":"Invalid parameters for __construct method","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode('{"errors":[{"message":"Invalid parameters for __construct method","code":-1}]}',self::JSON_DECODE_DEFAULT_ASSOC);
 		if (empty($this->request_token))
-			return json_decode('{"errors":[{"message":"No request_token","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode('{"errors":[{"message":"No request_token","code":-1}]}',self::JSON_DECODE_DEFAULT_ASSOC);
 		return json_decode(
 			'{"url":'.
-				json_encode($this->authening_url_header.'oauth/authorize?oauth_token='.$this->request_token).
+				json_encode(self::AUTHENING_URL_HEADER.'oauth/authorize?oauth_token='.$this->request_token).
 			'}',
-			JSON_DECODE_DEFAULT_ASSOC
+			self::JSON_DECODE_DEFAULT_ASSOC
 		);
 	}
 	
@@ -1084,59 +1181,54 @@ class UltimateOAuth {
 		self::modParameters($params);
 		if (isset($params['oauth_verifier']))
 			$this->oauth_verifier = $params['oauth_verifier'];
-		$this->OAuthRequest($this->oauth_url_header.'oauth/access_token','POST');
+		$this->OAuthRequest(self::OAUTH_URL_HEADER.'oauth/access_token','POST');
 		return json_decode(
 			(empty($this->access_token) || empty($this->access_token_secret)) ?
 			'{"access_token":"'.$this->access_token.'","access_token_secret":"'.$this->access_token_secret.'"}':
 			'{"errors":[{"message":"Couldn\'t get access_token","code":-1}]}',
-			JSON_DECODE_DEFAULT_ASSOC
+			self::JSON_DECODE_DEFAULT_ASSOC
 		);
 	}
 	
 	# POST oauth/request_token
 	public function POST_oauth_request_token() {
-		$this->OAuthRequest($this->oauth_url_header.'oauth/request_token','POST');
+		$this->OAuthRequest(self::OAUTH_URL_HEADER.'oauth/request_token','POST');
 		return json_decode(
 			(empty($this->request_token) || empty($this->request_token_secret)) ?
 			'{"request_token":"'.$this->request_token.'","request_token_secret":"'.$this->request_token_secret.'"}':
 			'{"errors":[{"message":"Couldn\'t get request_token","code":-1}]}',
-			JSON_DECODE_DEFAULT_ASSOC
+			self::JSON_DECODE_DEFAULT_ASSOC
 		);
 	}
 	
-	# BgOAuthGetToken（username・passwordからアクセストークンを取得）
-	//
-	// 必要パラメータ
-	//   username - スクリーンネームまたはメールアドレス
-	//   password - パスワード
-	//
+	# BgOAuthGetToken
 	public function BgOAuthGetToken($params=array()) {
 		if ($this->construct_error()) {
 			$res = '{"errors":[{"message":"Invalid parameters for __construct method","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		self::modParameters($params);
 		if (!isset($params['username'])) {
 			$res = '{"errors":[{"message":"No username","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		if (!isset($params['password'])) {
 			$res = '{"errors":[{"message":"No password","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		if (!self::castable($params['username'])) {
 			$res = '{"errors":[{"message":"Invalid username format","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		if (!self::castable($params['password'])) {
 			$res = '{"errors":[{"message":"Invalid password format","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
 		$res = $this->OAuthRequest('https://api.twitter.com/oauth/request_token','POST');
 		if ($res===false || empty($this->request_token) || empty($this->request_token_secret)) {
 			$res = '{"errors":[{"message":"Failed to get request_token","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$q = 'force_login=true&oauth_token='.$this->request_token;
 		$request  = '';
@@ -1149,12 +1241,12 @@ class UltimateOAuth {
 		$res = $this->connect('api.twitter.com','https',$request);
 		if ($res===false) {
 			$res = '{"errors":[{"message":"Failed to open login page when fetching authenticity_token","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$pattern = '@<input name="authenticity_token" type="hidden" value="(.+?)" />@';
 		if (!preg_match($pattern,$res,$matches)) {
 			$res = '{"errors":[{"message":"Failed to get authenticity_token","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$q = http_build_query(
 			array(
@@ -1178,22 +1270,22 @@ class UltimateOAuth {
 		$res = $this->connect('api.twitter.com','https',$request);
 		if ($res===false) {
 			$res = '{"errors":[{"message":"Failed to open login page when logining","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$pattern = '@oauth_verifier=(.+?)"|<code>(.+?)</code>@';
 		if (!preg_match($pattern,$res,$matches)) {
 			$res = '{"errors":[{"message":"Wrong username or password","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		$this->oauth_verifier = (!empty($matches[1])) ? $matches[1] : $matches[2];
 		$res = $this->OAuthRequest('https://api.twitter.com/oauth/access_token','POST');
 		if ($res===false || empty($this->access_token) || empty($this->access_token_secret)) {
 			$res = '{"errors":[{"message":"Failed to get access_token","code":-1}]}';
-			return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 		}
 		return json_decode(
 			'{"access_token":"'.$this->access_token.'","access_token_secret":"'.$this->access_token_secret.'"}',
-			JSON_DECODE_DEFAULT_ASSOC
+			self::JSON_DECODE_DEFAULT_ASSOC
 		);
 	}
 	
@@ -1201,46 +1293,325 @@ class UltimateOAuth {
 	
 	# GET activity/by_friends
 	public function GET_activity_by_friends() {
-		$res = $this->OAuthRequest($this->activity_url_header.'activity/by_friends.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/by_friends.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET activity/about_me
 	public function GET_activity_about_me() {
-		$res = $this->OAuthRequest($this->activity_url_header.'activity/about_me.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/about_me.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	//***** Help *****//
 	
 	# GET help/configuration
 	public function GET_help_configuration() {
-		$res = $this->OAuthRequest($this->url_header.'help/configuration.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'help/configuration.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET help/languages
 	public function GET_help_languages() {
-		$res = $this->OAuthRequest($this->url_header.'help/languages.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'help/languages.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET help/privacy
 	public function GET_help_privacy() {
-		$res = $this->OAuthRequest($this->url_header.'help/privacy.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'help/privacy.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET help/tos
 	public function GET_help_tos() {
-		$res = $this->OAuthRequest($this->url_header.'help/tos.json');
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'help/tos.json');
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET application/rate_limit_status
 	public function GET_application_rate_limit_status($params=array()) {
-		$res = $this->OAuthRequest($this->url_header.'application/rate_limit_status.json','GET',$params);
-		return json_decode($res,JSON_DECODE_DEFAULT_ASSOC);
+		$res = $this->OAuthRequest(self::URL_HEADER.'application/rate_limit_status.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	//***** FollowerRequest *****//
+	
+	# kWeb_login
+	public function kWeb_login($params=array()) {
+		$this->cookie_k = array();
+		$this->authenticity_token_k = '';
+		self::modParameters($params);
+		if (!isset($params['username'])) {
+			$res = '{"errors":[{"message":"No username","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (!isset($params['password'])) {
+			$res = '{"errors":[{"message":"No password","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
+		$request  = '';
+		$request .= 'GET /login HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= "\r\n";
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to open login page when fetching authenticity_token","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (!preg_match('@<input.*?name="authenticity_token".*?value="(.+?)"@',$res,$matches)) {
+			$res = '{"errors":[{"message":"Failed to get authenticity_token","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$authenticity_token = $matches[1];
+		$q = http_build_query(
+			array(
+				'login'              => $params['username'],
+				'password'           => $params['password'],
+				'authenticity_token' => $authenticity_token
+			),'','&'
+		);
+		$request  = '';
+		$request .= 'POST /login HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= 'Content-Type: application/x-www-form-urlencoded'."\r\n";
+		$request .= 'Content-Length: '.strlen($q)."\r\n";
+		$request .= "\r\n";
+		$request .= $q;
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to open login page when logining","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (!preg_match('@twtr\.jp/home@',$res,$matches)) {
+			$res = '{"errors":[{"message":"Wrong username or password","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$this->authenticity_token_k = $authenticity_token;
+		$res = '{"result":"Login successful"}';
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# kWeb_incoming
+	public function kWeb_incoming() {
+		if (empty($this->authenticity_token_k)) {
+			$res = '{"errors":[{"message":"You haven\'t logined yet","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
+		$q = http_build_query(
+			array(
+				'authenticity_token' => $this->authenticity_token_k
+			),'','&'
+		);
+		$request  = '';
+		$request .= 'POST /follower_request HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= 'Content-Type: application/x-www-form-urlencoded'."\r\n";
+		$request .= 'Content-Length: '.strlen($q)."\r\n";
+		$request .= "\r\n";
+		$request .= $q;
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to connect","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$dom = new DOMDocument('1.0','UTF-8');
+		$dom->preserveWhiteSpace = false;
+		if (!@$dom->loadHTML($res)) {
+			$res = '{"errors":[{"message":"DOM parse error","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$xml = simplexml_import_dom($dom);
+		$blocks = $xml->xpath("//*[@class='first' or @class='separated']");
+		$users = $bases = array();
+		foreach ($blocks as $i => $block) {
+			$users[$i] = new stdClass;
+			$id                           = substr((string)@$block->div->form->attributes()->action,33) ;
+			$users[$i]->id                = (int)$id                                                    ;
+			$users[$i]->id_str            = $id                                                         ;
+			$users[$i]->screen_name       = (string)@$block->img->attributes()->alt                     ;
+			$users[$i]->name              = mb_substr((string)@$block->span,1,-2,'UTF-8')               ;
+			$users[$i]->profile_image_url = (string)@$block->img->attributes()->src                     ;
+			$bases[$i]                    = strtolower(@$users[$i]->screen_name)                        ;
+		}
+		array_multisort($bases,$users);
+		return (!self::JSON_DECODE_DEFAULT_ASSOC) ? $users : json_decode(json_encode($users),true);
+	}
+	
+	# kWeb_accept
+	public function kWeb_accept($params=array(),$waitResponse=true) {
+		if (empty($this->authenticity_token_k)) {
+			$res = '{"errors":[{"message":"You haven\'t logined into KeitaiWeb yet","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		self::modParameters($params);
+		if (!isset($params['user_id'])) {
+			$res = '{"errors":[{"message":"No user_id","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (!ctype_digit($params['user_id'])) {
+			$res = '{"errors":[{"message":"Invalid user_id","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
+		$q = http_build_query(
+			array(
+				'authenticity_token' => $this->authenticity_token_k,
+				'cursor'             => '-1',
+				'commit'             => "\xe8\xa8\xb1\xe5\x8f\xaf"
+			),'','&'
+		);
+		$request  = '';
+		$request .= 'POST /follower_request/'.$params['user_id'].' HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= 'Content-Type: application/x-www-form-urlencoded'."\r\n";
+		$request .= 'Content-Length: '.strlen($q)."\r\n";
+		$request .= "\r\n";
+		$request .= $q;
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if (!$waitResponse)
+			return;
+		$request  = '';
+		$request .= 'GET /follower_request?processing_id='.$params['user_id'].' HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= "\r\n";
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to connect","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (strpos($res,"\xe8\xa8\xb1\xe5\x8f\xaf\xe3\x81\x97\xe3\x81\xbe\xe3\x81\x97\xe3\x81\x9f</div>")===false) {
+			$res = '{"errors":[{"message":"Failed to accept '.$params['user_id'].'","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$res = '{"result":"Acception of '.$params['user_id'].' successful"}';
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# kWeb_deny
+	public function kWeb_deny($params=array(),$waitResponse=true) {
+		if (empty($this->authenticity_token_k)) {
+			$res = '{"errors":[{"message":"You haven\'t logined into KeitaiWeb yet","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		self::modParameters($params);
+		if (!isset($params['user_id'])) {
+			$res = '{"errors":[{"message":"No user_id","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (!ctype_digit($params['user_id'])) {
+			$res = '{"errors":[{"message":"Invalid user_id","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$params['user_id'] = (int)$params['user_id'];
+		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
+		$q = http_build_query(
+			array(
+				'authenticity_token' => $this->authenticity_token_k,
+				'cursor'             => '-1',
+				'commit'             => "\xe6\x8b\x92\xe5\x90\xa6"
+			),'','&'
+		);
+		$request  = '';
+		$request .= 'POST /follower_request/'.$params['user_id'].' HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= 'Content-Type: application/x-www-form-urlencoded'."\r\n";
+		$request .= 'Content-Length: '.strlen($q)."\r\n";
+		$request .= "\r\n";
+		$request .= $q;
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if (!$waitResponse)
+			return;
+		$request  = '';
+		$request .= 'GET /follower_request?processing_id='.$params['user_id'].' HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= "\r\n";
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to connect","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (strpos($res,"\xe6\x8b\x92\xe5\x90\xa6\xe3\x81\x97\xe3\x81\xbe\xe3\x81\x97\xe3\x81\x9f</div>")===false) {
+			$res = '{"errors":[{"message":"Failed to deny '.$params['user_id'].'","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$res = '{"result":"Denial of '.$params['user_id'].' successful"}';
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# kWeb_acceptAll
+	public function kWeb_acceptAll($dummy=array(),$waitResponse=true) {
+		if (empty($this->authenticity_token_k)) {
+			$res = '{"errors":[{"message":"You haven\'t logined into KeitaiWeb yet","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$toPairs = create_function('$a','$p=array();foreach($a as $k=>$v)$p[]=$k."=".$v;return $p;');
+		$q = http_build_query(
+			array(
+				'authenticity_token' => $this->authenticity_token_k,
+				'cursor'             => '-1',
+				'commit'             => "\xe5\x85\xa8\xe3\x81\xa6\xe8\xa8\xb1\xe5\x8f\xaf"
+			),'','&'
+		);
+		$request  = '';
+		$request .= 'POST /follower_request/accept_all HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= 'Content-Type: application/x-www-form-urlencoded'."\r\n";
+		$request .= 'Content-Length: '.strlen($q)."\r\n";
+		$request .= "\r\n";
+		$request .= $q;
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		if (!$waitResponse)
+			return;
+		$request  = '';
+		$request .= 'GET /home HTTP/1.1'."\r\n";
+		$request .= 'Host: twtr.jp'."\r\n";
+		$request .= 'User-Agent: Mozilla/0 (iPhone;)'."\r\n";
+		$request .= 'Cookie: '.implode('; ',$toPairs($this->cookie_k))."\r\n";
+		$request .= 'Connection: Close'."\r\n";
+		$request .= "\r\n";
+		$res = $this->connect('twtr.jp','https',$request,true,true);
+		$pattern  = '@';
+		$pattern .= '<form action="https://twtr\.jp/follower_request/(\d+).*?';
+		$pattern .= '<img alt="(.+?)".*?src="(.+?)".*?';
+		$pattern .= '<span class="small">(.*?)</span>';
+		$pattern .= '@s';
+		if ($res===false) {
+			$res = '{"errors":[{"message":"Failed to connect","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		if (strpos($res,"\xe8\xa8\xb1\xe5\x8f\xaf\xe3\x81\x97\xe3\x81\xbe\xe3\x81\x97\xe3\x81\x9f</div>")===false) {
+			$res = '{"errors":[{"message":"Failed to accept all","code":-1}]}';
+			return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+		}
+		$res = '{"result":"Acception of all successful"}';
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	/************************************/
@@ -1255,9 +1626,11 @@ class UltimateOAuth {
 	private $request_token_secret;
 	private $oauth_verifier;
 	private $cookie;
+	private $cookie_k;
+	private $authenticity_token_k;
 	
 	// ソケット接続
-	private function connect($host,$scheme,$request,$waitResponse=true) {
+	private function connect($host,$scheme,$request,$waitResponse=true,$keitaiWeb=false) {
 		if (strtolower($scheme)==='https') {
 			$host = 'ssl://'.$host;
 			$port = 443;
@@ -1279,16 +1652,21 @@ class UltimateOAuth {
 		fclose($fp);
 		if (!$waitResponse)
 			return;
-		if (isset($res[1]) && preg_match('/^Set-Cookie:(.+?)$/mi',$res[0],$matches)===1) {
-			$parts = explode(';',$matches[1]);
-			foreach ($parts as $part) {
-				$part = trim($part);
-				if (strpos($part,'=')<1 || substr_count($part,'=')!==1)
-					continue;
-				list($key,$value) = explode('=',$part,2);
-				if (in_array($key,array('expires','path','domain','secure')))
-					continue;
-				$this->cookie[$key] = $value;
+		if (isset($res[1]) && preg_match_all('/^Set-Cookie:(.+?)$/mi',$res[0],$matches,PREG_SET_ORDER)>0) {
+			foreach ($matches as $match) {
+				$parts = explode(';',$match[1]);
+				foreach ($parts as $part) {
+					$part = trim($part);
+					if (strpos($part,'=')<1 || substr_count($part,'=')!==1)
+						continue;
+					list($key,$value) = explode('=',$part,2);
+					if (in_array($key,array('expires','path','domain','secure')))
+						continue;
+					if ($keitaiWeb)
+						$this->cookie_k[$key] = $value;
+					else
+						$this->cookie[$key]   = $value;
+				}
 			}
 		}
 		return $ret;
@@ -1480,6 +1858,8 @@ class UltimateOAuth {
 		return true;
 	}
 	public static function castable_array($array) {
+		if (!is_array($array))
+			return false;
 		foreach ($array as $var)
 		if (is_object($var) || is_array($var) || is_resource($var))
 			return false;
@@ -1513,16 +1893,6 @@ class UltimateOAuthMulti {
 	}
 	
 	# ジョブ追加
-	// 
-	// 第1引数 - UltimateOAuthオブジェクト
-	// 第2引数 - UltimateOAuthクラス内のPublicメソッド名
-	// 　 　　    （fromJSON・toJSON・castable・castable_array・get_object_varsを除く）
-	// 第3引数 - パラメータ
-	// 
-	// ※ 第1引数は参照渡しです（NULLなどを渡すと例外が発生します）
-	// ※ 「アクセストークン取得→ツイート」など、明確に順番が決まっているものに関しては
-	// 　 同時に並列実行することは避けてください（そうした場合の挙動は未定義です）
-	//
 	public function addjob(&$UltimateOAuthObject,$method,$params=array()) {
 		$i = count($this->chs);
 		$this->obj[$i] =& $UltimateOAuthObject;
@@ -1560,6 +1930,7 @@ class UltimateOAuthMulti {
 	# マルチリクエスト実行（結果は追加した順番に配列で返ります）
 	public function exec() {
 		$className = self::baseClassName;
+		$assoc = constant($className.'::JSON_DECODE_DEFAULT_ASSOC');
 		$res = array();
 		if (empty($this->chs))
 			return $res;
@@ -1575,18 +1946,18 @@ class UltimateOAuthMulti {
 		} while ($active>0);
 		foreach ($this->chs as $i => $ch) {
 			if ($this->url===false) {
-				$res[$i] = json_decode('{"errors":[{"message":"Failed to get URL to this file itself","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+				$res[$i] = json_decode('{"errors":[{"message":"Failed to get URL to this file itself","code":-1}]}',$assoc);
 			} elseif (!is_callable('curl_multi_init')) {
-				$res[$i] = json_decode('{"errors":[{"message":"cURL functions are not installed on this server","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+				$res[$i] = json_decode('{"errors":[{"message":"cURL functions are not installed on this server","code":-1}]}',$assoc);
 			} elseif (is_null($ch)) {
-				$res[$i] = json_decode('{"errors":[{"message":"Can\'t construct UltimateOAuth object or use its method","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+				$res[$i] = json_decode('{"errors":[{"message":"Can\'t construct UltimateOAuth object or use its method","code":-1}]}',$assoc);
 			} elseif ($error=curl_error($ch)) {
-				$res[$i] = json_decode('{"errors":[{"message":"cURL error occurred (message: '.$error.')","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+				$res[$i] = json_decode('{"errors":[{"message":"cURL error occurred (message: '.$error.')","code":-1}]}',$assoc);
 			} elseif (($temp=json_decode(curl_multi_getcontent($ch)))===null) {
-				$res[$i] = json_decode('{"errors":[{"message":"Failed to get valid cURL content (Requests from this server to itself may be blocked)","code":-1}]}',JSON_DECODE_DEFAULT_ASSOC);
+				$res[$i] = json_decode('{"errors":[{"message":"Failed to get valid cURL content (Requests from this server to itself may be blocked)","code":-1}]}',$assoc);
 			} else {
 				$res[$i] = $temp;
-				if (JSON_DECODE_DEFAULT_ASSOC) {
+				if ($assoc) {
 					if (!empty($temp['access_token']) && !empty($temp['access_token_secret']))
 						$this->obj[$i] = new $className($this->vars[$i]['consumer_key'],$this->vars[$i]['consumer_secret'],$temp['access_token'],$temp['access_token_secret']);
 					elseif (!empty($temp['request_token']) && !empty($temp['request_token_secret']))
