@@ -7,13 +7,13 @@
 
 # 通常の認証ステップを経てテストツイート
 
-## index.html
+### index.html
 ユーザーにクリックさせるリンクがあるページ。
 
     <a href="req.php">認証</a>
 
 
-## req.php
+### req.php
 リクエストトークン取得。
 
     <?php
@@ -35,7 +35,7 @@
     header('Location: '.$_SESSION['uo']->getAuthorizeURL()->url);
     exit();
 
-## callback.php
+### callback.php
 アクセストークン取得。  
 アプリ設定でこれにコールバックするように設定しておく。
 
@@ -63,7 +63,7 @@
     header('Location: http://～～～.com/tweet.php');
     exit();
 
-## tweet.php
+### tweet.php
 「Test」とツイートしてみる。
 
     <?php
@@ -84,7 +84,7 @@
     else
       echo "ツイート成功しました： {$res->text}<br />\n";
 
-## (備考)
+### (備考)
 ここではセッションにUltimateOAuthオブジェクトを保存したが、
 
     $text = $uo->save();
@@ -107,7 +107,7 @@
 
 # サンプルいろいろ
 
-## ホームタイムラインを取得して表示
+### ホームタイムラインを取得して表示
 
     <?php
     
@@ -168,7 +168,7 @@
       
     }
 
-## 画像を添付してツイート
+### 画像を添付してツイート
 同一ディレクトリにあるtest.pngを添付してツイート。  
 エラーチェックは省略。
 
@@ -179,7 +179,7 @@
     //パラメータ「media」の頭に「@」をつけると値がファイルパスの扱いになる
     $uo->POST_statuses_update_with_media(array('status'=>'test','@media[]'=>'test.png'));
  
-## 高速非同期リクエスト(いわゆる爆撃)
+### 高速非同期リクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
 
     <?php
@@ -277,7 +277,7 @@ UltimateOAuthオブジェクトとほぼ同様に扱える。
     POSTリクエストに関してはデフォルトのコンシューマーキーが常に使われる。
     */
 
-## (備考)
+### (備考)
 
 UltimateOAuthクラスと同様に
 
