@@ -1,19 +1,23 @@
-初心者向けにサンプルとか。
+初心者向けにサンプルとか。  
+わかる人はUltimateOAuthのコメントだけ読んどけば大丈夫なはず。
 
+***
+***
 ***
 
 # 通常の認証ステップを経てテストツイート
 
 ## index.html
-ユーザーにクリックさせるリンクがあるページ
+ユーザーにクリックさせるリンクがあるページ。
 
     <a href="req.php">認証</a>
 
 
 ## req.php
-リクエストトークン取得
+リクエストトークン取得。
 
     <?php
+    
     //session_start()の前に必ずUltimateOAuth.phpを読み込む
     require_once('UltimateOAuth.php');
     session_start();
@@ -30,13 +34,13 @@
     //Twitterに飛ばす
     header('Location: '.$_SESSION['uo']->getAuthorizeURL()->url);
     exit();
-    ?>
 
 ## callback.php
-アクセストークン取得  
-アプリ設定でこれにコールバックするように設定しておく
+アクセストークン取得。  
+アプリ設定でこれにコールバックするように設定しておく。
 
     <?php
+    
     //session_start()の前に必ずUltimateOAuth.phpを読み込む
     require_once('UltimateOAuth.php');
     session_start();
@@ -58,12 +62,12 @@
     //テストツイートするURLに飛ばす
     header('Location: http://～～～.com/tweet.php');
     exit();
-    ?>
 
 ## tweet.php
-テストとして「Test」とツイート
+「Test」とツイートしてみる。
 
     <?php
+    
     //session_start()の前に必ずUltimateOAuth.phpを読み込む
     require_once('UltimateOAuth.php');
     session_start();
@@ -79,37 +83,34 @@
       echo("{$res->errors[0]->code}: {$res->errors[0]->message}<br />\n");
     else
       echo "ツイート成功しました： {$res->text}<br />\n";
-    ?>
-
 
 ## (備考)
 ここではセッションにUltimateOAuthオブジェクトを保存したが、
 
-    <?php
     $text = $uo->save();
-    ?>
 
 で復元可能な形式でテキストとして出力、
 
-    <?php
     $uo = UltimateOAuth::load($text);
-    ?>
+
 で復元済みのUltimateOAuthオブジェクトを受け取れる。  
 ログイン済みのデータを恒久的に保存したい場合に有用。  
 また、アクセストークンからオブジェクトを生成したい場合は、  
 
-    <?php
     $uo = new UltimateOAuth('コンシューマーキー','コンシューマーシークレット','アクセストークン','アクセストークンシークレット');
-    ?>
+
 とすればOK。
 
+***
+***
 ***
 
 # サンプルいろいろ
 
-##ホームタイムラインを取得して表示
+## ホームタイムラインを取得して表示
 
     <?php
+    
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
     //タイムライン取得
@@ -166,32 +167,37 @@
       echo "{$res->errors[0]->code}: {$res->errors[0]->message}<br />\n";
       
     }
-    ?>
 
-
-## 同一ディレクトリにあるtest.pngを添付してツイート
-エラーチェックは省略
+## 画像を添付してツイート
+同一ディレクトリにあるtest.pngを添付してツイート。  
+エラーチェックは省略。
 
     <?php
+    
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
     //パラメータ「media」の頭に「@」をつけると値がファイルパスの扱いになる
     $uo->POST_statuses_update_with_media(array('status'=>'test','@media[]'=>'test.png'));
-    ?>
  
-## 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回高速で非同期リクエスト
+## 高速非同期リクエスト(いわゆる爆撃)
+「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
+
     <?php
+    
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
     for ($i=1;$i<=10;$i++)
       //(トークン取得系以外の)「POST_」で始まるメソッドに関しては、第2引数にfalseを指定すると非同期リクエストになる
       $uo->POST_statuses_update(array('status'=>'Bomb',str_repeat('!',$i)),false);
-    ?>
 
+***
+***
 ***
 
 # バックグラウンドOAuth(疑似xAuth)で一発認証
+
     <?php
+    
     //UltimateOAuth.php読み込み
     require_once('UltimateOAuth.php');
     
@@ -206,15 +212,17 @@
       echo("{$res->errors[0]->code}: {$res->errors[0]->message}<br />\n");
     
     # この段階で認証完了
-    ?>
 
+***
+***
 ***
 
 # UltimateOAuthMultiクラスを使う
-ここでは例として、複数のアカウントで同時にバックグラウンドOAuth認証を行う
-特にこれは処理が重いメソッドなので、並列化することで高速化が大きく期待できる
+ここでは例として、複数のアカウントで同時にバックグラウンドOAuth認証を行う。
+特にこれは処理が重いメソッドなので、並列化することで高速化が大きく期待できる。
 
     <?php
+    
     //UltimateOAuth.php読み込み
     require_once('UltimateOAuth.php');
     
@@ -238,13 +246,14 @@
     execメソッドの返り値はそれぞれのレスポンスの配列になっているので、
     そこからエラー処理することもまた可能。
     */
-    ?>
 
+***
+***
 ***
 
 # UltimateOAuthRotateクラスを使う
 自動的にGETリクエストに関してのAPI規制回避を行えるクラスで、  
-UltimateOAuthオブジェクトとほぼ同様に扱える
+UltimateOAuthオブジェクトとほぼ同様に扱える。
 
     <?php
     
@@ -267,21 +276,15 @@ UltimateOAuthオブジェクトとほぼ同様に扱える
     自動的にAPI規制を回避できる。
     POSTリクエストに関してはデフォルトのコンシューマーキーが常に使われる。
     */
-    
-    ?>
 
-##(備考)
+## (備考)
 
 UltimateOAuthクラスと同様に
 
-    <?php
     $text = $uor->save();
-    ?>
 
 で復元可能な形式でテキストとして出力、
 
-    <?php
     $uor = UltimateOAuthRotate::load($text);
-    ?>
 
 で復元済みのUltimateOAuthRotateオブジェクトを受け取れる。
