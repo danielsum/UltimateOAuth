@@ -36,7 +36,7 @@
 // 　+++ UltimateOAuth の定数設定(右オペランドにデフォルト値を記載) +++
 // 
 // 　　　(bool) JSON_DECODE_DEFAULT_ASSOC  = false
-// 　　　　json_decode関数の第2引数の値。trueを指定するとあらゆる
+// 　　　　内部的に使われているjson_decode関数の第2引数の値。trueを指定するとあらゆる
 // 　　　　「*(stdClass)」「*(mixed)」表記のものが全て連想配列に変換されて返されます。
 // 
 // 　　　(bool) DEFAULT_STRINGIFY_IDS      = true
@@ -230,7 +230,7 @@
 // 　　　　引数は不要です。コンストラクトした後はregisterメソッドを必ず実行する必要があります。
 // 
 // 　　- (string) save
-// 　　- static (UltimateOAuthMulti) load
+// 　　- static (UltimateOAuthRotate) load
 // 　　　　saveメソッドの動的コールでUltimateOAuthRotateオブジェクト復元に必要な情報を簡易的に暗号化したシリアルで返します。
 // 　　　　loadメソッドの静的コールで第1引数にシリアルを渡すと、(可能な限り)復元した状態でUltimateOAuthRotateオブジェクトを返します。
 // 
@@ -265,104 +265,6 @@
 // 　ではなく
 // 　　is_array($response)
 // 　としなければ、NOTICEエラーを引き起こす原因となります。
-// 
-// 
-// 
-// ****** サンプルコード ******
-// 
-// ★通常利用共通部分
-//  $consumer_key        = 'xxxxxxxxxx';
-//  $consumer_secret     = 'yyyyyyyyyy';
-//  $access_token        = 'zzzzzzzzzz';
-//  $access_token_secret = 'wwwwwwwwww';
-//  $to = new UltimateOAuth($consumer_key,$consumer_secret,$access_token,$access_token_secret);
-// 
-// ●ホームタイムラインを取得して実際に表示してみる
-//  $timeline = $to->GET_statuses_home_timeline();
-//  if (is_array($timeline)) {
-//    foreach ($timeline as $tweet) {
-//      if (isset($tweet->retweeted_status)) {
-//        $retweet = $tweet;
-//        $tweet = $tweet->retweeted_status;
-//      } else {
-//        $retweet = null;
-//      }
-//      $date = new DateTime($tweet->created_at);
-//      $date->setTimezone(new DateTimeZone('Asia/Tokyo'));
-//      echo "<img src=\"{$tweet->user->profile_image_url}\">\n";
-//      echo "{$tweet->user->name}(@{$tweet->user->screen_name})<br />\n";
-//      echo nl2br($tweet->text)."<br />\n";
-//      echo $date->format('Y.n.j G:i:s')."<br />\n";
-//      if ($retweet!==null)
-//         echo "Retweeted by {$retweet->user->name}(@{$retweet->user->screen_name})<br />\n";
-//      echo "<hr />\n";
-//    }
-//  } else {
-//    $error = $timeline->errors[0];
-//    echo "[{$error->code}]{$error->message}<br />\n";
-//  }
-// 
-// ●$_POST['status']の値をツイート、結果も表示
-//  if (isset($_POST['status'])) {
-//    $res = $to->POST_statuses_update(array('status'=>$_POST['status']));
-//    if (empty($res->errors)) {
-//      echo "Tweeting Done: $res->text<br />\n";
-//    } else {
-//      $error = $res->errors[0];
-//      $escaped_status = htmlspecialchars(get_magic_quotes_gpc()?stripslashes($_POST['status']):$_POST['status'],ENT_QUOTES);
-//      echo "[{$error->code}]{$error->message}: {$escaped_status}<br />\n";
-//    }
-//  }
-// 
-// ●同一ディレクトリにあるtest.pngを添付してツイート
-//  $to->POST_statuses_update_with_media(array('status'=>'test','@media[]'=>'./test.png'));
-// 
-// ●「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回非同期リクエスト
-//  for ($i=1;$i<=10;$i++)
-//    $to->POST_statuses_update(array('status'=>'Bomb',str_repeat('!',$i)),false);
-// 
-// ★バックグラウンドOAuth認証からそのままツイート、結果も表示
-//  $consumer_key    = 'xxxxxxxxxx';
-//  $consumer_secret = 'yyyyyyyyyy';
-//  $username        = 'zzzzzzzzzz';
-//  $password        = 'wwwwwwwwww';
-//  $to = new UltimateOAuth($consumer_key,$consumer_secret);
-//  $res = $to->BgOAuthGetToken(array('username'=>$username,'password'=>$password));
-//  $success = false;
-//  if (empty($res->errors)) {
-//    $res = $to->POST_statuses_update(array('status'=>'Tweeting through BgOAuth'));
-//    if (empty($res->errors)) {
-//      echo "Tweeting Done: {$res->text}<br />\n";
-//      $success = true;
-//    }
-//  }
-//  if (!$success) {
-//    $error = $res->errors[0];
-//    $escaped_status = htmlspecialchars(get_magic_quotes_gpc()?stripslashes($_POST['status']):$_POST['status'],ENT_QUOTES);
-//    echo "[{$error->code}]{$error->message}: {$escaped_status}<br />\n"; 
-//  }
-// 
-// ★複数のバックグラウンドOAuth認証を並列処理で実行する
-//  $consumer_key    = 'xxxxxxxxxx';
-//  $consumer_secret = 'yyyyyyyyyy';
-//  $to = new UltimateOAuth($consumer_key,$consumer_secret);
-//  $to_0 = clone ($to_1 = clone ($to_2 = clone $to));
-//  $uom = new UltimateOAuthMulti();
-//  $uom->addjob($to_0,'BgOAuthGetToken',array('id_0','pw_0'));
-//  $uom->addjob($to_1,'BgOAuthGetToken',array('id_1','pw_1'));
-//  $uom->addjob($to_2,'BgOAuthGetToken',array('id_2','pw_2'));
-//  $res = $uom->exec();
-//  var_dump($res);
-// 
-// ★API規制を回避しながらプライバシーポリシーを100回連続取得してみる
-//  $consumer_key    = 'xxxxxxxxxx';
-//  $consumer_secret = 'yyyyyyyyyy';
-//  $username        = 'zzzzzzzzzz';
-//  $password        = 'wwwwwwwwww';
-//  $to = new UltimateOAuthRotate();
-//  $to->register($consumer_key,$consumer_secret,$username,$password);
-//  for ($i=1;$i<=100;$i++)
-//    var_dump($to->GET_help_privacy());
 // 
 
 /***** UltimateOAuth基本クラス *****/
