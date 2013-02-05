@@ -1,7 +1,7 @@
 <?php
 
 //****************************************************************
-//****************** UltimateOAuth Version 3.0 *******************
+//****************** UltimateOAuth Version 3.1 *******************
 //****************************************************************
 //
 //                                            作者: @To_aru_User
@@ -1209,7 +1209,7 @@ class UltimateOAuth {
 			$this->oauth_verifier = $params['oauth_verifier'];
 		$this->OAuthRequest(self::OAUTH_URL_HEADER.'oauth/access_token','POST');
 		return json_decode(
-			(empty($this->access_token) || empty($this->access_token_secret)) ?
+			(!empty($this->access_token) && !empty($this->access_token_secret)) ?
 			'{"access_token":"'.$this->access_token.'","access_token_secret":"'.$this->access_token_secret.'"}':
 			'{"errors":[{"message":"Couldn\'t get access_token","code":-1}]}',
 			self::JSON_DECODE_DEFAULT_ASSOC
@@ -1220,7 +1220,7 @@ class UltimateOAuth {
 	public function POST_oauth_request_token() {
 		$this->OAuthRequest(self::OAUTH_URL_HEADER.'oauth/request_token','POST');
 		return json_decode(
-			(empty($this->request_token) || empty($this->request_token_secret)) ?
+			(!empty($this->request_token) && !empty($this->request_token_secret)) ?
 			'{"request_token":"'.$this->request_token.'","request_token_secret":"'.$this->request_token_secret.'"}':
 			'{"errors":[{"message":"Couldn\'t get request_token","code":-1}]}',
 			self::JSON_DECODE_DEFAULT_ASSOC
