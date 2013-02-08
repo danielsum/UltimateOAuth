@@ -1,6 +1,10 @@
 # License
 __CC0__ (No Rights Reserved)
 
+***
+***
+***
+
 # [UltimateOAuth]
 
 初心者向けにサンプルとか。  
