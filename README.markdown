@@ -1,4 +1,4 @@
-# UltimateOAuth
+# [UltimateOAuth]
 
 初心者向けにサンプルとか。  
 わかる人はUltimateOAuthのコメントだけ読んどけば大丈夫なはず。
@@ -280,3 +280,5 @@ UltimateOAuthクラスと同様に
     $uor = UltimateOAuthRotate::load($text);
 
 で復元済みのUltimateOAuthRotateオブジェクトを受け取れる。
+
+[UltimateOAuth]: https://github.com/Certainist/UltimateOAuth/blob/master/UltimateOAuth.php
