@@ -1,7 +1,7 @@
 <?php
 
 //****************************************************************
-//****************** UltimateOAuth Version 3.1 *******************
+//****************** UltimateOAuth Version 3.2 *******************
 //****************************************************************
 //
 //                                            作者: @To_aru_User
@@ -14,7 +14,7 @@
 //
 // https://dev.twitter.com/docs/api/1.1 に記載されている順番に則っています(2013/1/5現在)。
 // Streaming以外の全てのエンドポイントに加え、アクティビティにも対応しています。
-//
+// 「for Official」と記載のあるものに関しては公式キーのみから使用が可能です。
 // 独自にバックグラウンドOAuth認証(疑似xAuth)でアクセストークンを取得するメソッド、
 // KeitaiWeb経由で非公開アカウントのフォローリクエストの承認・拒否をするメソッドも独自に実装しています。
 // バックグラウンドOAuth認証の仕様が前提ですが、UltimateOAuthRotateクラスで自動的に
@@ -161,7 +161,7 @@
 // 　　　　第2引数にレスポンスを待機するかどうかをブール値で渡すことが出来ます。
 // 　　　　デフォルトではtrueです。レスポンス非待機時にはnullが返されます。
 //
-// 　　- *(stdClass) kWeb_acceptAll
+// 　　- *(stdClass) kWeb_accept_all
 // 　　　　全てのフォローリクエストを承認します。
 // 　　　　成功時に
 // 　　　　　$response->result                = 'リザルトメッセージ';
@@ -243,7 +243,7 @@
 // 
 // 　　- (mixed) __call [マジックメソッド]
 // 　　　　未定義のメソッドが実行されたとき、UltimateOAuthクラス内から実行可能なメソッドを探して、一致した場合はそれを実行します。
-// 　　　　エンドポイントへのGETリクエストが直接絡むメソッドに関しては公式キーを1回ごとにローテーションさせて、
+// 　　　　エンドポイントへのGETリクエスト/公式キー必須のPOSTリクエストが絡むメソッドに関しては公式キーを1回ごとにローテーションさせて、
 // 　　　　API規制回避を自動で行います。
 // 　　　　それ以外のメソッドに関してはメインのキーが使われます。
 // 　　　　適切なメソッドが見つからなかった場合や、register・loadメソッドのどちらかが実行済みでない場合はエラーオブジェクトを返します。
@@ -506,14 +506,54 @@ class UltimateOAuth {
 	# GET statuses/oembed
 	public function GET_statuses_oembed($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage(self::URL_HEADER."statuses/retweet/{$id}.json",'GET',$params);
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/retweet/{$id}.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# GET statuses/:id/activity/summary
+	public function GET_statuses_activity_summary($params=array()) {
+		self::modParameters($params);
+		if (isset($params['id'])) {
+			$id = $params['id'];
+			unset($params['id']);
+		} else {
+			$id = '';
+		}
+		$res = $this->OAuthRequest(self::URL_HEADER."statuses/{$id}/activity/summary.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# GET statuses/media_timeline (for Official)
+	public function GET_statuses_media_timeline($params=array()) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'statuses/media_timeline.json','GET',$params);
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET search/tweets
 	public function GET_search_tweets($params=array()) {
 		self::modParameters($params);
-		$res = $this->OAuthRequestImage(self::URL_HEADER.'search/tweets.json','GET',$params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'search/tweets.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# GET search/universal (for Official)
+	public function GET_search_universal($params=array()) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'search/universal.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# GET conversation/show/:id (for Official)
+	public function GET_conversation_show($params=array()) {
+		self::modParameters($params);
+		if (isset($params['id'])) {
+			$id = $params['id'];
+			unset($params['id']);
+		} else {
+			$id = '';
+		}
+		$res = $this->OAuthRequest(self::URL_HEADER."conversation/show/{$id}.json",'GET',$params);
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
@@ -641,6 +681,33 @@ class UltimateOAuth {
 	public function POST_friendships_update($params=array(),$waitResponse=true) {
 		self::modParameters($params);
 		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/update.json','POST',$params,$waitResponse);
+		if (!$waitResponse) 
+			return;
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# POST friendships/accept (for Official)
+	public function POST_friendships_accept($params=array(),$waitResponse=true) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/accept.json','POST',$params,$waitResponse);
+		if (!$waitResponse) 
+			return;
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# POST friendships/deny (for Official)
+	public function POST_friendships_deny($params=array(),$waitResponse=true) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/deny.json','POST',$params,$waitResponse);
+		if (!$waitResponse) 
+			return;
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# POST friendships/accept_all (for Official)
+	public function POST_friendships_accept_all($params=array(),$waitResponse=true) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/accept_all.json','POST',$params,$waitResponse);
 		if (!$waitResponse) 
 			return;
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
@@ -865,6 +932,13 @@ class UltimateOAuth {
 			$slug = '';
 		}
 		$res = $this->OAuthRequest(self::URL_HEADER."users/suggestions/{$slug}/members.json",'GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
+	
+	# GET users/recommendations (for Official)
+	public function GET_users_recommendations($params=array()) {
+		self::modParameters($params);
+		$res = $this->OAuthRequest(self::URL_HEADER.'users/recommendations.json','GET',$params);
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
@@ -1314,14 +1388,14 @@ class UltimateOAuth {
 	//***** Activity *****//
 	
 	# GET activity/by_friends
-	public function GET_activity_by_friends() {
-		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/by_friends.json');
+	public function GET_activity_by_friends($params=array()) {
+		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/by_friends.json','GET',$params);
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
 	# GET activity/about_me
-	public function GET_activity_about_me() {
-		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/about_me.json');
+	public function GET_activity_about_me($params=array()) {
+		$res = $this->OAuthRequest(self::ACTIVITY_URL_HEADER.'activity/about_me.json','GET',$params);
 		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
 	}
 	
@@ -1464,13 +1538,13 @@ class UltimateOAuth {
 		$users = $bases = array();
 		foreach ($blocks as $i => $block) {
 			$users[$i] = new stdClass;
-			$id                           = (string)substr((string)@$block->div->form->attributes()->action,33) ;
-			$users[$i]->id                = (int)$id                                                            ;
-			$users[$i]->id_str            = $id                                                                 ;
-			$users[$i]->screen_name       = (string)@$block->img->attributes()->alt                             ;
-			$users[$i]->name              = mb_substr((string)@$block->span,1,-2,'UTF-8')                       ;
-			$users[$i]->profile_image_url = (string)@$block->img->attributes()->src                             ;
-			$bases[$i]                    = strtolower(@$users[$i]->screen_name)                                ;
+			$id                           = substr((string)@$block->div->form->attributes()->action,33) ;
+			$users[$i]->id                = (int)$id                                                    ;
+			$users[$i]->id_str            = $id                                                         ;
+			$users[$i]->screen_name       = (string)@$block->img->attributes()->alt                     ;
+			$users[$i]->name              = mb_substr((string)@$block->span,1,-2,'UTF-8')               ;
+			$users[$i]->profile_image_url = (string)@$block->img->attributes()->src                     ;
+			$bases[$i]                    = strtolower((string)@$users[$i]->screen_name)                ;
 		}
 		array_multisort($bases,$users);
 		if (self::JSON_DECODE_DEFAULT_ASSOC)
@@ -1622,8 +1696,8 @@ class UltimateOAuth {
 		return self::JSON_DECODE_DEFAULT_ASSOC ? $res : (object)$res ;
 	}
 	
-	# kWeb_acceptAll
-	public function kWeb_acceptAll($dummy=array(),$waitResponse=true) {
+	# kWeb_accept_all
+	public function kWeb_accept_all($dummy=array(),$waitResponse=true) {
 		if (empty($this->authenticity_token_k)) {
 			$res = '{"errors":[{"message":"You haven\'t logined into KeitaiWeb yet","code":-1}]}';
 			return (!$waitResponse) ? null : json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
@@ -2178,7 +2252,7 @@ class UltimateOAuthRotate {
 		$this->user = new stdClass;
 		$this->user->main = new stdClass;
 		$this->user->sub  = new stdClass;
-		$this->user->i    = 0;
+		$this->user->method_count = new stdClass;
 	}
 	
 	# UltimateOAuthRotateオブジェクトを実際に生成
@@ -2186,7 +2260,7 @@ class UltimateOAuthRotate {
 		$this->user = new stdClass;
 		$this->user->main = new stdClass;
 		$this->user->sub  = new stdClass;
-		$this->user->i    = 0;
+		$this->user->method_count = new stdClass;
 		if (!$multiRequest || !is_callable('curl_multi_init'))
 			$this->registerSingle($base_consumer_key,$base_consumer_secret,$username,$password);
 		else
@@ -2210,7 +2284,7 @@ class UltimateOAuthRotate {
 		$copy->user = new stdClass;
 		$copy->user->main = $this->user()->main->save();
 		$copy->user->sub  = new stdClass;
-		$copy->user->i    = $this->user()->i;
+		$copy->user->method_count = $this->user()->method_count;
 		$keys = array_keys((array)$this->user()->sub);
 		$count = count($keys);
 		for ($i=0;$i<$count;$i++)
@@ -2231,19 +2305,17 @@ class UltimateOAuthRotate {
 		if (!$this->registered)
 			return json_decode('{"errors":[{"message":"You haven\'t registered yet","code":-1}]}',$assoc);
 		$keys = array_keys((array)$this->user->sub);
-		if (!is_callable(array($this->user->main,$name))) {
+		if (!is_callable(array($this->user->main,$name)) || !preg_match('/^(?:POST|GET|kWeb|BgOAuth)/i',$name))
 			return json_decode('{"errors":[{"message":"Can\'t call \"'.$name.'\"","code":-1}]}',$assoc);
-		} elseif (
-			preg_match('/^(?:POST_|kWeb_|BgOAuth)/i',$name)===1
-			|| (($temp=stripos($name,'GET_'))===0 && empty($this->user->sub))
-		) {
-			return call_user_func_array(array($this->user->main,$name),$args);
-		} elseif (isset($temp) && $temp===0) {
-			$res = call_user_func_array(array($this->user->sub->{$keys[$this->user->i]},$name),$args);
-			$this->user->i = ($this->user->i < count((array)$this->user->sub) - 1) ? $this->user->i + 1 : 0 ;
+		if (!empty($this->user->sub) && preg_match('/^POST_friendships_accept$|^POST_friendships_deny$|^POST_friendships_accept_all$|^GET_/i',$name)===1) {
+			$lower = strtolower($name);
+			if (!isset($this->user->method_count->$lower))
+				$this->user->method_count->$lower = 0;
+			$res = call_user_func_array(array($this->user->sub->{$keys[$this->user->method_count->$lower]},$name),$args);
+			$this->user->method_count->$lower = ($this->user->method_count->$lower<count($keys)-1) ? $this->user->method_count->$lower+1 : 0 ;
 			return $res;
 		} else {
-			return json_decode('{"errors":[{"message":"Can\'t call \"'.$name.'\"","code":-1}]}',$assoc);
+			return call_user_func_array(array($this->user->main,$name),$args);
 		}
 	}
 	
@@ -2257,7 +2329,7 @@ class UltimateOAuthRotate {
 		if (!isset($obj->user) || !is_object($obj->user))
 			$obj->user = new stdClass;
 		$json = isset($obj->user->main) ? $obj->user->main : '';
-		$this->user->i = (isset($obj->user->i) && self::castable($obj->user->i)) ? (int)$obj->user->i : 0;
+		$this->user->method_count = (isset($obj->user->method_count) && is_object($obj->user->method_count)) ? $obj->user->method_count : new stdClass;
 		$this->user->main = $baseClassName::load($json);
 		if (!isset($obj->user->sub) || !is_object($obj->user->sub))
 			$obj->user->sub = new stdClass;
