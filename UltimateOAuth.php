@@ -1,7 +1,7 @@
 <?php
 
 //****************************************************************
-//****************** UltimateOAuth Version 3.2 *******************
+//****************** UltimateOAuth Version 3.3 *******************
 //****************************************************************
 //
 //                                            作者: @To_aru_User
@@ -234,8 +234,9 @@
 // 　　　　saveメソッドの動的コールでUltimateOAuthRotateオブジェクト復元に必要な情報を簡易的に暗号化したシリアルで返します。
 // 　　　　loadメソッドの静的コールで第1引数にシリアルを渡すと、(可能な限り)復元した状態でUltimateOAuthRotateオブジェクトを返します。
 // 
-// 　　- (void) register
+// 　　- (bool) register
 // 　　　　新規にバックグラウンドOAuthで「任意のキー＋公式キー複数」からの認証を実行します。
+// 　　　　全ての認証が成功した場合はTrue、それ以外はFalseを返します。
 // 　　　　cURLがインストールされている環境では並列実行を試みます。
 // 　　　　　$consumer_key, $consumer_secret, $username, $password
 // 　　　　は必須です。
@@ -2257,6 +2258,7 @@ class UltimateOAuthRotate {
 	
 	# UltimateOAuthRotateオブジェクトを実際に生成
 	public function register($base_consumer_key,$base_consumer_secret,$username,$password,$multiRequest=true) {
+		$this->error = false;
 		$this->user = new stdClass;
 		$this->user->main = new stdClass;
 		$this->user->sub  = new stdClass;
@@ -2266,6 +2268,7 @@ class UltimateOAuthRotate {
 		else
 			$this->registerMulti($base_consumer_key,$base_consumer_secret,$username,$password);
 		$this->registered = true;
+		return !$this->error;
 	}
 	
 	# データから復元
@@ -2298,6 +2301,7 @@ class UltimateOAuthRotate {
 	
 	private $user;
 	private $registered;
+	private $error;
 	
 	// マジックメソッドを用いて間接的にUltimateOAuthクラスのメソッドをコール
 	public function __call($name,$args) {
@@ -2346,10 +2350,14 @@ class UltimateOAuthRotate {
 		$params        = array('username'=>$username,'password'=>$password);
 		$res = array();
 		$this->user->main = new $baseClassName($base_consumer_key,$base_consumer_secret);
-		call_user_func(array($this->user->main,$method),$params);
+		$func_res = call_user_func(array($this->user->main,$method),$params);
+		if (!empty($func_res->errors))
+			$this->error = true;
 		foreach (self::getOfficialKeys() as $key => $app) {
 			$this->user->sub->$key = new $baseClassName($app->consumer_key,$app->consumer_secret);
-			call_user_func(array($this->user->sub->$key,$method),$params);
+			$func_res = call_user_func(array($this->user->sub->$key,$method),$params);
+			if (!empty($func_res->errors))
+				$this->error = true;
 		}
 	}
 	
@@ -2371,6 +2379,8 @@ class UltimateOAuthRotate {
 		}
 		$res = $multi->exec();
 		foreach ($res as $i => &$r) {
+			if (!empty($r->errors))
+				$this->error = true;
 			if (!$assoc && !empty($r->cookie))
 				$r->cookie   = (array)$r->cookie;
 			if (!$assoc && !empty($r->cookie_k))
