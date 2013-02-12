@@ -1,10 +1,10 @@
 <?php
 
-//****************************************************************
-//****************** UltimateOAuth Version 3.4 *******************
-//****************************************************************
+//***************************************************************
+//***************** UltimateOAuth Version 3.41 ******************
+//***************************************************************
 //
-//                                            作者: @To_aru_User
+//                                           作者: @To_aru_User
 //
 //
 // ******  概　要  ******
@@ -2142,7 +2142,7 @@ class UltimateOAuthMulti {
 		if ($document_root_url==='/')
 			$document_root_url = '';
 		$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') ? 'https': 'http';
-		$document_root_url = $protocol.'://'.$_SERVER['SERVER_NAME'].$document_root_url;
+		$document_root_url = $protocol.'://'.$_SERVER['SERVER_NAME'].':'.$_SERVER['SERVER_PORT'].$document_root_url;
 		$absolute_path = realpath(__FILE__);
 		if (!$absolute_path)
 			return false;
