@@ -1,7 +1,7 @@
 <?php
 
 //***************************************************************
-//***************** UltimateOAuth Version 3.41 ******************
+//***************** UltimateOAuth Version 3.42 ******************
 //***************************************************************
 //
 //                                           作者: @To_aru_User
@@ -1999,11 +1999,6 @@ class UltimateOAuth {
 		return true;
 	}
 	
-	// serialize防止
-	public function __sleep() {
-		throw new BadMethodCallException('You cannot serialize this object. You must use the method save() instead.');
-	}
-	
 }
 
 /**** UltimateOAuthマルチリクエスト用クラス *****/
@@ -2462,11 +2457,6 @@ class UltimateOAuthRotate {
 		return true;
 	}
 	
-	// serialize防止
-	public function __sleep() {
-		throw new BadMethodCallException('You cannot serialize this object. You must use the method save() instead.');
-	}
-
 }
 
 // UltimateOAuthMultiのジョブをチェック
