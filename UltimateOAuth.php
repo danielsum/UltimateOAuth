@@ -1,7 +1,7 @@
 <?php
 
 //***************************************************************
-//***************** UltimateOAuth Version 3.42 ******************
+//***************** UltimateOAuth Version 3.5 *******************
 //***************************************************************
 //
 //                                           作者: @To_aru_User
@@ -600,6 +600,16 @@ class UltimateOAuth {
 	}
 	
 	//***** Friends & Followers *****//
+	
+	# GET friendships/no_retweets/ids
+	# idをデフォルトでは文字列化
+	public function GET_friendships_no_retweets_ids($params=array()) {
+		self::modParameters($params);
+		if (!isset($params['stringify_ids']) && self::DEFAULT_STRINGIFY_IDS)
+			$params['stringify_ids'] = '1';
+		$res = $this->OAuthRequest(self::URL_HEADER.'friendships/no_retweets/ids.json','GET',$params);
+		return json_decode($res,self::JSON_DECODE_DEFAULT_ASSOC);
+	}
 	
 	# GET friends/ids
 	# デフォルトではcursorに-1を設定
