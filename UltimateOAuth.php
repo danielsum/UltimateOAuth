@@ -1,8 +1,8 @@
 <?php
 
-//***************************************************************
-//***************** UltimateOAuth Version 3.5 *******************
-//***************************************************************
+//**************************************************************
+//**************** UltimateOAuth Version 3.51 ******************
+//**************************************************************
 //
 //                                           作者: @To_aru_User
 //
@@ -2349,11 +2349,11 @@ class UltimateOAuthRotate {
 			$obj->user = new stdClass;
 		$json = isset($obj->user->main) ? $obj->user->main : '';
 		$this->user->method_count = (isset($obj->user->method_count) && is_object($obj->user->method_count)) ? $obj->user->method_count : new stdClass;
-		$this->user->main = $baseClassName::load($json);
+		$this->user->main = call_user_func(array($baseClassName,load),$json);
 		if (!isset($obj->user->sub) || !is_object($obj->user->sub))
 			$obj->user->sub = new stdClass;
 		foreach ($obj->user->sub as $key => $json)
-			$this->user->sub->$key = $baseClassName::load($json);
+			$this->user->sub->$key = call_user_func(array($baseClassName,load),$json);
 		$this->registered = true;
 	}
 	
