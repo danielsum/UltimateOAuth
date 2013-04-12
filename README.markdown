@@ -129,4 +129,4 @@ __CC0__ (No Rights Reserved)
     */
 
 [UltimateOAuth]: https://github.com/Certainist/UltimateOAuth/blob/master/UltimateOAuth.php
-[サンプル]: https://github.com/Certainist/UltimateOAuth/blob/master/appp
+[サンプル]: https://github.com/Certainist/UltimateOAuth/tree/master/sample
