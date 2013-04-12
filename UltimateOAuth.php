@@ -1,8 +1,8 @@
 <?php
 
-// **************************************************************
-// **************** UltimateOAuth Version 4.0 *******************
-// **************************************************************
+// ***************************************************************
+// **************** UltimateOAuth Version 4.01 *******************
+// ***************************************************************
 //
 //   Author : CertaiN
 //   License: Creative Commons CC0
@@ -451,6 +451,16 @@ class UltimateOAuth {
 			parse_str($elements['query'],$temp);
 			$params += $temp;
 			
+			// oauth_verifierがパラメータにあった場合、プロパティに直接設定してunset
+			if (
+				$elements['path']==='/oauth/access_token' &&
+				isset($params['oauth_verifier']) &&
+				UltimateOAuthModule::convertible($params['oauth_verifier'])
+			) {
+				$this->oauth_verifier = (string)$params['oauth_verifier'];
+				unset($params['oauth_verifier']);
+			}
+			
 			if (!$scraping) {
 				
 				// OAuth認証のとき
@@ -458,6 +468,7 @@ class UltimateOAuth {
 				// QueryString取得
 				$query = $this->getQueryString(
 					$elements['scheme'].'://'.$elements['host'].$elements['path'],
+					$elements['path'],
 					$method,
 					$params,
 					$multipart // マルチパートの場合はAuthorizationヘッダーとして取得
@@ -590,10 +601,16 @@ class UltimateOAuth {
 				// スクレピング時はそのままボディを返す
 				return $res;
 				
-			} elseif (preg_match('@oauth/(?:(request)|access)_token@',$elements['path'],$matches) && strpos($res,'{')!==0) {
-			
-				// トークンを取得した場合、プロパティを上書き
+			} elseif (preg_match('@^/oauth/(?:(request)|access)_token$@',$elements['path'],$matches) && strpos($res,'{')!==0) {
+				
+				// トークンを取得するエンドポイントを叩いたとき
 				parse_str($res,$oauth_tokens);
+				
+				// 失敗したらエラーを返す
+				if (!isset($oauth_tokens['oauth_token'],$oauth_tokens['oauth_token_secret']))
+					throw new Exception($res);
+				
+				// トークンを取得した場合、プロパティを上書き
 				if (empty($matches[1])) {
 					if (isset($oauth_tokens['oauth_token']))
 						$this->access_token        = $oauth_tokens['oauth_token'];
@@ -653,7 +670,7 @@ class UltimateOAuth {
 		
 		} catch (Exception $e) {
 			
-			return UltimateOAuthModule::createErrorObject($e->getMessage());
+			return UltimateOAuthModule::createErrorObject($e->getMessage(),$this->lastHTTPStatusCode());
 		
 		}
 	
@@ -661,7 +678,6 @@ class UltimateOAuth {
 	
 	# URIをパース
 	private function parse_uri($uri) {
-		
 		
 		if (!UltimateOAuthModule::convertible($uri))
 			throw new Exception('URI isn\'t convertible to string.');
@@ -720,7 +736,7 @@ class UltimateOAuth {
 	}
 	
 	# パラメータとなるQueryStringを作成
-	private function getQueryString($uri,$method,$opt,$as_header) {
+	private function getQueryString($uri,$path,$method,$opt,$as_header) {
 		
 		// 処理用の関数作成
 		$enc = create_function('$str',
@@ -747,19 +763,9 @@ class UltimateOAuth {
 		);
 		
 		// エンドポイントで追加パラメータを振り分け
-		if (
-			strpos($uri,'oauth/request_token') !== false
-		) {
+		if ($path==='/oauth/request_token') {
 			$oauth_token_secret           = '';
-		} elseif (
-			strpos($uri,'oauth/authorize')     !== false ||
-			strpos($uri,'oauth/authenticate')  !== false
-		) {
-			$parameters['oauth_token']    = $this->request_token;
-			$oauth_token_secret           = $this->request_token_secret;
-		} elseif (
-			strpos($uri,'oauth/access_token')  !== false
-		) {
+		} elseif ($path==='/oauth/access_token') {
 			$parameters['oauth_verifier'] = $this->oauth_verifier;
 			$parameters['oauth_token']    = $this->request_token;
 			$oauth_token_secret           = $this->request_token_secret;
