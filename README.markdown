@@ -31,7 +31,7 @@ __CC0__ (No Rights Reserved)
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
     // パラメータ「media」の頭に「@」をつけると値がファイルパスの扱いになる
-    $uo->post('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'test.png'));
+    $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'test.png'));
  
 ### 高速非同期リクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。

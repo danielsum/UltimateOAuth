@@ -1,7 +1,7 @@
 <?php
 
 // ***************************************************************
-// **************** UltimateOAuth Version 4.02 *******************
+// **************** UltimateOAuth Version 4.03 *******************
 // ***************************************************************
 //
 //   Author : CertaiN
@@ -464,6 +464,8 @@ class UltimateOAuth {
 				
 				// OAuth認証のとき
 				
+				// マルチパートの場合は特定のキー以外を削除
+				
 				// QueryString取得
 				$query = $this->getQueryString(
 					$elements['scheme'].'://'.$elements['host'].$elements['path'],
@@ -513,12 +515,12 @@ class UltimateOAuth {
 				// POSTメソッドでマルチパートのとき
 				
 				// バウンダリ生成
-				$boundary = '--'.sha1($_SERVER['REQUEST_TIME']);
+				$boundary = '--------------'.sha1($_SERVER['REQUEST_TIME']);
 				
 				// コンテンツ行作成
 				$cts_lines = array();
 				foreach ($params as $key => $value) {
-					$cts_lines[] = array('--'.$boundary);
+					$cts_lines[] = '--'.$boundary;
 					// キーの頭に「@」がつく場合のみ、それを除去すると同時に、値を「ファイル名」として扱う
 					if (strpos($key,'@')===0) {
 						if (!is_file($value))
@@ -635,6 +637,10 @@ class UltimateOAuth {
 			
 				// それ以外の場合はJSONをデコード
 				$res = json_decode($res);
+				
+				// デコードに失敗したらエラー
+				if (!$res)
+					throw new Exception('Failed to decode as JSON. There may be some errors on the request header.');
 				
 			}
 			
@@ -774,7 +780,8 @@ class UltimateOAuth {
 		}
 		
 		// 認証部分以外のパラメータを追加
-		$parameters += $opt;
+		if (!$as_header)
+			$parameters += $opt;
 		
 		// シグネチャ作成用ボディ
 		$body = implode(
