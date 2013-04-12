@@ -22,7 +22,7 @@ __CC0__ (No Rights Reserved)
 
 # このライブラリの特長を生かした使い方
 
-### 画像を添付してツイート
+## 画像を添付してツイート
 同一ディレクトリにあるtest.pngを添付してツイート。  
 エラーチェックは省略。
 
@@ -33,7 +33,7 @@ __CC0__ (No Rights Reserved)
     // パラメータ「media」の頭に「@」をつけると値がファイルパスの扱いになる
     $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'test.png'));
  
-### 高速非同期リクエスト(いわゆる爆撃)
+## 高速非同期リクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
 
     <?php
@@ -44,9 +44,7 @@ __CC0__ (No Rights Reserved)
       // POSTに関しては、$wait_responseにfalseを渡すことで、非同期リクエストが可能
       $uo->post('statuses/update.json',array('status'=>'Bomb',str_repeat('!',$i)),false);
 
-***
-
-# バックグラウンドOAuth(疑似xAuth)で一発認証
+## バックグラウンドOAuth(疑似xAuth)で一発認証
 
     <?php
     
@@ -65,9 +63,7 @@ __CC0__ (No Rights Reserved)
     
     # この段階で認証完了
 
-***
-
-# UltimateOAuthMultiクラスを使う
+## UltimateOAuthMultiクラスを使う
 ここでは例として、複数のアカウントで同時にバックグラウンドOAuth認証を行う。  
 特にこれは処理が重いメソッドなので、並列化することで高速化が大きく期待できる。
 
@@ -97,9 +93,7 @@ __CC0__ (No Rights Reserved)
     そこからエラー処理することもまた可能。
     */
 
-***
-
-# UltimateOAuthRotateクラスを使う
+## UltimateOAuthRotateクラスを使う
 自動的にGETリクエストに関してのAPI規制回避を行えるクラス。
 公式アプリのキーを含め、複数のキーを同時に管理して、
 適当なローテーションを行い、API規制を回避する。
