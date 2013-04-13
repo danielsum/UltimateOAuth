@@ -403,18 +403,14 @@ class UltimateOAuth {
 			return;
 			
 		// Set-Cookieヘッダを調べる
-		if (preg_match_all('/^Set-Cookie:(.+?)$/mi',$res[0],$matches,PREG_SET_ORDER)) {
-			// 除外対象
+		if (preg_match_all('/^Set-Cookie:(.+?)(?:;|$)/mi',$res[0],$matches)) {
 			// Set-Cookieヘッダを1行ずつイテレート
-			foreach ($matches as $match) {
-				// 設定するCookieを1件ずつイテレート
-				foreach (explode(';',$match[1]) as $part) {
-					$pair = explode('=',trim($part),2);
-					if (!isset($pair[1]))
-						continue;
-					// Cookieを設定
-					$this->cookie[$pair[0]] = $pair[1];
-				}
+			foreach ($matches[1] as $match) {
+				$pair = explode('=',trim($match),2);
+				if (!isset($pair[1]))
+					continue;
+				// Cookieを設定
+				$this->cookie[$pair[0]] = $pair[1];
 			}
 		}
 		
