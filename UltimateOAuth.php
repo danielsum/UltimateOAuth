@@ -1,7 +1,7 @@
 <?php
 
 // ***************************************************************
-// **************** UltimateOAuth Version 4.03 *******************
+// **************** UltimateOAuth Version 4.04 *******************
 // ***************************************************************
 //
 //   Author : CertaiN
@@ -460,8 +460,6 @@ class UltimateOAuth {
 				
 				// OAuth認証のとき
 				
-				// マルチパートの場合は特定のキー以外を削除
-				
 				// QueryString取得
 				$query = $this->getQueryString(
 					$elements['scheme'].'://'.$elements['host'].$elements['path'],
@@ -917,20 +915,24 @@ class UltimateOAuthMulti {
 		if (!$this->handles)
 			return $res;
 		
-		// cURLが使える場合のみマルチハンドルリソース作成
-		if (is_callable('curl_multi_init'))
+		// cURLが使える場合
+		if (is_callable('curl_multi_init')) {
+			
+			//マルチハンドルリソース作成
 			$mh = curl_multi_init();
 			
-		// 1個ずつマルチハンドルに追加
-		foreach ($this->handles as $ch)
-			if (is_resource($ch))
-				curl_multi_add_handle($mh,$ch);
-				
-		// cURLマルチリクエスト実行
-		$active = 0;
-		do {
-			curl_multi_exec($mh,$active);
-		} while ($active>0);
+			// 1個ずつマルチハンドルに追加
+			foreach ($this->handles as $ch)
+				if (is_resource($ch))
+					curl_multi_add_handle($mh,$ch);
+			
+			// cURLマルチリクエスト実行
+			$active = 0;
+			do {
+				curl_multi_exec($mh,$active);
+			} while ($active>0);
+			
+		}
 		
 		// cURLリソースをイテレート
 		foreach ($this->handles as $i => $ch) {
@@ -993,9 +995,11 @@ class UltimateOAuthMulti {
 			
 			// cURLリソースを解放
 			if (is_resource($ch)) {
-				curl_multi_remove_handle($mh,$ch);
+				if (is_resource($mh))
+					curl_multi_remove_handle($mh,$ch);
 				curl_close($ch);
 			}
+			
 		}
 		
 		// cURLマルチリソースを解放
