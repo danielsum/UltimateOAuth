@@ -1,7 +1,7 @@
 <?php
 
 // ***************************************************************
-// **************** UltimateOAuth Version 4.04 *******************
+// **************** UltimateOAuth Version 4.05 *******************
 // ***************************************************************
 //
 //   Author : CertaiN
@@ -493,14 +493,8 @@ class UltimateOAuth {
 			
 			// クッキーがあれば追加
 			if ($this->cookie) {
-				$pairize = create_function('$arr',
-					'$ret = array();'.
-					'foreach($arr as $key => $value)'.
-						'$ret[] = $key."=".$value;'.
-					'return $ret;'
-				);
 				array_splice($lines,-1,0,array(
-					'Cookie: '.implode('; ',$pairize($this->cookie)),
+					'Cookie: '.implode('; ',UltimateOAuthModule::pairize($this->cookie)),
 				));
 			}
 			
@@ -737,21 +731,6 @@ class UltimateOAuth {
 	# パラメータとなるQueryStringを作成
 	private function getQueryString($uri,$path,$method,$opt,$as_header) {
 		
-		// 処理用の関数作成
-		$enc = create_function('$str',
-			'return str_replace("%7E","~",rawurlencode($str));'
-		);
-		$nsort = create_function('$arr',
-			'uksort($arr,"strnatcmp");'.
-			'return $arr;'
-		);
-		$pairize = create_function('$arr',
-			'$ret = array();'.
-			'foreach($arr as $key => $value)'.
-				'$ret[] = $key."=".$value;'.
-			'return $ret;'
-		);
-		
 		// 初期パラメータ
 		$parameters = array(
 			'oauth_consumer_key'     => $this->consumer_key      ,
@@ -781,16 +760,22 @@ class UltimateOAuth {
 		$body = implode(
 			'&',
 			array_map(
-				$enc,
+				array(
+					'UltimateOAuthModule',
+					'enc',
+				),
 				array(
 					$method,
 					$uri,
 					implode(
 						'&',
-						$pairize(
-							$nsort(
+						UltimateOAuthModule::pairize(
+							UltimateOAuthModule::nksort(
 								array_map(
-									$enc,
+									array(
+										'UltimateOAuthModule',
+										'enc',
+									),
 									$parameters
 								)
 							)
@@ -804,7 +789,10 @@ class UltimateOAuth {
 		$key = implode(
 			'&',
 			array_map(
-				$enc,
+				array(
+					'UltimateOAuthModule',
+					'enc',
+				),
 				array(
 					$this->consumer_secret,
 					$oauth_token_secret,
@@ -821,9 +809,12 @@ class UltimateOAuth {
 				', ' :
 				'&'
 			,
-			$pairize(
+			UltimateOAuthModule::pairize(
 				array_map(
-					$enc,
+					array(
+						'UltimateOAuthModule',
+						'enc',
+					),
 					$parameters
 				)
 			)
@@ -1046,13 +1037,8 @@ class UltimateOAuthMulti {
 			$document_root_url = '';
 		$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') ? 'https': 'http';
 		$document_root_url = $protocol.'://'.$_SERVER['SERVER_NAME'].':'.$_SERVER['SERVER_PORT'].$document_root_url;
-		$absolute_path = realpath(__FILE__);
-		if (!$absolute_path)
-			return false;
-		if (substr($absolute_path,-1)!=='/' && substr(__FILE__,-1)==='/')
-			$absolute_path .= '/';
-		$url = str_replace($document_root_path,$document_root_url,$absolute_path);
-		if ($absolute_path===$url)
+		$url = str_replace($document_root_path,$document_root_url,__FILE__);
+		if ($url===__FILE__)
 			return false;
 		return $url;
 		
@@ -1207,43 +1193,6 @@ class UltimateOAuthRotate {
 		
 		try {
 			
-			// 処理用関数作成
-			$call = create_function(
-				'$callable,$args',
-				'$res = @call_user_func_array($callable,$args);'.
-				'if ($res===false)'.
-					'throw new Exception("Some errors ocurred on function \''.$name.'\'.");'.
-				'return $res;'
-			);
-			$path = create_function(
-				'$uri',
-				'$elements = parse_url($uri);'.
-				'if ($elements===false)'.
-					'throw new Exception("URI is invalid.");'.
-				'if (!isset($elements["host"])) {'.
-					'if (strpos($elements["path"],"/")===0)'.
-						'$elements["path"] = substr($elements["path"],1);'.
-					'if ('.
-						'strpos($elements["path"],"1")   !== 0 &&'.
-						'strpos($elements["path"],"1.1") !== 0 &&'.
-						'strpos($elements["path"],"i")   !== 0'.
-					') {'.
-						'if (strpos($elements["path"],"activity/")!==false)'.
-							'$elements["path"] = "/".UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION."/".$elements["path"];'.
-						'elseif (strpos($elements["path"],"oauth/")===false)'.
-							'$elements["path"] = "/".UltimateOAuthConfig::DEFAULT_API_VERSION."/".$elements["path"];'.
-						'else'.
-							'$elements["path"] = "/".$elements["path"];'.
-					'} else {'.
-						'$elements["path"] = "/".$elements["path"];'.
-					'}'.
-				'} else {'.
-					'if (!isset($elements["path"]))'.
-						'$elements["path"] = "/";'.
-				'}'.
-				'return $elements["path"];'
-			);
-			
 			// POSTメソッドだが公式キーを使わせる例外
 			$post_ex = array(
 				'friendships/accept.json',
@@ -1268,7 +1217,7 @@ class UltimateOAuthRotate {
 					throw new Exception('First parameter isn\'t convertible to string.');
 				
 				// エンドポイント取得
-				$endpoint = $path($args[0]);
+				$endpoint = UltimateOAuthModule::endpoint($args[0]);
 				
 				// 番号→名前対応テーブル作成
 				$table = array_keys(self::getOfficialKeys());
@@ -1287,7 +1236,7 @@ class UltimateOAuthRotate {
 				$obj = $this->official[$table[$this->current['GET'][$endpoint]]];
 				
 				// メソッドをコールして結果を返す
-				return $call(array(&$obj,$name),$args);
+				return UltimateOAuthModule::call(array(&$obj,$name),$args);
 				
 			} elseif (
 				!strcasecmp($name,'post') ||
@@ -1323,7 +1272,7 @@ class UltimateOAuthRotate {
 				}
 				
 				// メソッドをコールして結果を返す
-				return $call(array(&$obj,$name),$args);
+				return UltimateOAuthModule::call(array(&$obj,$name),$args);
 				
 			} else {
 				
@@ -1455,6 +1404,31 @@ class UltimateOAuthRotate {
 /**** 共通モジュール ****/
 class UltimateOAuthModule {
 	
+	# 自然順にキーソートした配列を返す
+	public static function nksort($arr) {
+	
+		uksort($arr,'strnatcmp');
+		return $arr;
+		
+	}
+	
+	# TwitterのOAuth認証の仕様に則ってURLエンコード
+	public static function enc($str) {
+	
+		return str_replace('%7E','~',rawurlencode($str));
+		
+	}
+	
+	# 配列のキーと値を「=」でつないでペアにする
+	public static function pairize($arr) {
+	
+		$ret = array();
+		foreach ($arr as $key => $value)
+			$ret[] = $key.'='.$value;
+		return $ret;
+		
+	}
+	
 	# 文字列にキャスト可能かどうか判定
 	public static function convertible($var) {
 		
@@ -1476,6 +1450,47 @@ class UltimateOAuthModule {
 			)
 		);
 	
+	}
+	
+	# call_user_func_arrayラッパー
+	public static function call($callable,$args) {
+		
+		$res = @call_user_func_array($callable,$args);
+		if ($res===false)
+			throw new Exception('Some errors ocurred on executing function.');
+		return $res;
+		
+	}
+	
+	# URIからエンドポイントのパスのみ抽出
+	public static function endpoint($uri) {
+	
+		$elements = parse_url($uri);
+		if ($elements===false)
+			throw new Exception('Invalid URI');
+		if (!isset($elements['host'])) {
+			if (strpos($elements['path']))
+				$elements['path'] = substr($elements['path'],1);
+			if (
+				strpos($elements['path'],'1')   !== 0 &&
+				strpos($elements['path'],'1.1') !== 0 &&
+				strpos($elements['path'],'i')   !== 0
+			) {
+				if (strpos($elements['path'],'activity/')!==false)
+					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION.'/'.$elements['path'];
+				elseif (strpos($elements['path'],'oauth/')===false)
+					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_API_VERSION.'/'.$elements['path'];
+				else
+					$elements['path'] = '/'.$elements['path'];
+			} else {
+				$elements['path'] = '/'.$elements['path'];
+			}
+		} else {
+			if (!isset($elements['path']))
+				$elements['path'] = '/';
+		}
+		return $elements['path'];
+		
 	}
 
 }
