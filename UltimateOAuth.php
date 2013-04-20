@@ -1,8 +1,8 @@
 <?php
 
-// ***************************************************************
-// **************** UltimateOAuth Version 4.05 *******************
-// ***************************************************************
+// **************************************************************
+// **************** UltimateOAuth Version 4.1 *******************
+// **************************************************************
 //
 //   Author : CertaiN
 //   License: Creative Commons CC0
@@ -11,14 +11,15 @@
 // 
 // 【特長】
 //  
-//  ・スクレイピング利用で疑似的にxAuth認証のようなことが出来る。
+//  ★スクレイピング利用で疑似的にxAuth認証のようなことが出来る。
 //    (UltimateOAuth::BgOAuthGetToken)
 //  
-//  ・PHP5.2以上で動作。HTTP通信にfsockopen関数を用いているため、PEARやcURLに依存しない。
+//  ・PHP5.2以上で動作。
+//    「PEAR」「cURL」「OAuth.php」などに依存しない。(依存ファイル無し)
 //  
 //  ・上記の理由から、POSTリクエスト時にオプションで指定して、レスポンスを待機させない非同期リクエストも出来る。
-//
-//  ・奇形なエラーレスポンスは標準形に修正される。
+//  
+//  ★奇形なエラーレスポンスは標準形に修正される。
 //    エラーメッセージを取得する方法に関して、TwitterAPIでは
 //      $response->errors[0]->message
 //      $respnose->errros
@@ -26,50 +27,37 @@
 //    などものによってバラツキがあるが、全てこのライブラリでは
 //      $response->errors[0]->message
 //    で扱うことができる。
-//    また意味が分かりにくいエラーコードは全て意味の分かりやすい「HTTPステータスコード」に上書きされて返される。
+//    またエラーコード
+//      $response->errors[0]->code
+//    は全て意味の分かりやすい「HTTPステータスコード」に上書きされて返される。
 //  
-//  ・cURLがインストールされている環境なら、複数のUltimateOAuthのメソッドを並列で実行させることが出来る。
+//  ・複数のUltimateOAuthのメソッドを並列で実行させることが出来る。
 //    (UltimateOAuthMulti)
+//    Version4.1以降、この並列リクエストもcURLに依存しなくなった。
 //    このファイル自身にリクエストを送信するため、このファイルがPublicディレクトリに置かれていなければならない。
 //  
 //  ・UltiamteOAuthオブジェクトを、規制緩和されている公式キーも併せて包括的に管理し、
 //    更に自動でローテーションさせてAPIのGETリクエストにおける規制が回避できるクラスを実装。
 //    (UltimateOAuthRotate)
+//    loginメソッドでUltimateOAuthMultiからUltimateOAuthのBgOAuthGetTokenメソッドをコールし、
+//    上記の複数のコンシューマーキーで高速に同時認証可能。
 //  
 // 【データの保存/復元について】
 //  
 //  ・UltimateOAuthクラス
-//      UltimateOAuth::load (static)
-//      UltimateOAuth::save
+//      UltimateOAuth::load (static) (安全)
+//      UltimateOAuth::save          (安全)
 //      serialize
 //      unserialize
 //     で可能。保存方法と復元方法を対応させること。
 //  
 //  ・UltimateOAuthMultiクラス
-//     cURLリソースを用いているため不可。
+//     ソケットリソースを用いているため不可。
 //  
 //  ・UltimateOAuthRotateクラス
 //      serialize
 //      unserialize
 //     で可能。
-//  
-// 【Ver4.0での大きな変更点】
-//  
-//  ・エンドポイントごとにメソッドを設けるのをやめ、
-//    Publicメソッドとして
-//      OAuthRequest,
-//      OAuthRequestMultipart,
-//      get,
-//      post
-//    を代わりに実装した。
-//    使い方はTwitterOAuthに類似している。
-//  
-//  ・奇形なエラーレスポンスを標準形に修正するようにした。
-//  
-//  ・エラー時、エラーコードの代わりにHTTPステータスコードを上書きして返すようにした。
-//  
-//  ・BgOAuthGetToken, UltimateOAuthMulti, UltiamteOAuthRotate の使い方が変わった。
-//  
 //  
 //  ※サンプルコードはGitHubに置いています。
 //  
@@ -83,7 +71,7 @@ interface UltimateOAuthConfig {
 	const DEFAULT_SCHEME               = 'https'                    ;
 	const DEFAULT_HOST                 = 'api.twitter.com'          ;
 	const DEFAULT_API_VERSION          = '1.1'                      ;
-	const DEFAULT_ACTIVITY_API_VERSION = 'i'                        ;
+	const DEFAULT_ACTIVITY_API_VERSION = '1.1'                      ;
 	
 	// 設定しておくと、UltimateOAuthMultiクラスがgetURLメソッドに依存しなくなる。
 	// (UNIX環境でなく、うまくいかない場合は設定推奨)
@@ -835,7 +823,7 @@ class UltimateOAuthMulti {
 	public function __construct() {
 	
 		// プロパティ初期化
-		$this->handles    = array();
+		$this->postfields = array();
 		$this->objects    = array();
 		$this->properties = array();
 		if (UltimateOAuthConfig::URL_TO_THIS_FILE)
@@ -852,7 +840,7 @@ class UltimateOAuthMulti {
 	public function addjob(&$uo,$method) {
 		
 		// 割り当てるキー
-		$i = count($this->handles);
+		$i = count($this->objects);
 		
 		// 第3引数以降を抽出
 		$args = array_slice(func_get_args(),2);
@@ -860,10 +848,10 @@ class UltimateOAuthMulti {
 		// 参照渡しでUltimateOAuthオブジェクトを代入
 		$this->objects[$i] = &$uo;
 		
-		// cURLが使えない、またはUltiamteOAuthオブジェクト以外が渡されたときNULLを代入
-		if (!is_callable('curl_init') || !($uo instanceof UltimateOAuth)) {
-			$this->handles[$i]    = null;
+		// またはUltiamteOAuthオブジェクト以外が渡されたときNULLを代入
+		if (!($uo instanceof UltimateOAuth)) {
 			$this->properties[$i] = null;
+			$this->postfields[$i] = null;
 			return;
 		}
 		
@@ -885,12 +873,8 @@ class UltimateOAuthMulti {
 			'&'
 		);
 		
-		// cURLリソースを作成してオプションをセット
-		$this->handles[$i] = curl_init();
-		curl_setopt($this->handles[$i],CURLOPT_URL,$this->url);
-		curl_setopt($this->handles[$i],CURLOPT_POST,true);
-		curl_setopt($this->handles[$i],CURLOPT_POSTFIELDS,$query);
-		curl_setopt($this->handles[$i],CURLOPT_RETURNTRANSFER,true);
+		// ポストフィールドを配列にセット
+		$this->postfields[$i] = $query;
 	
 	}
 	
@@ -902,72 +886,98 @@ class UltimateOAuthMulti {
 		// レスポンスを受け取る配列
 		$res = array();
 		
-		// ハンドルが存在しなければ空配列を返す
-		if (!$this->handles)
+		// ソケットの配列
+		$fps = array();
+		
+		// ジョブが無ければ空配列を返す
+		if (!$this->postfields)
 			return $res;
 		
-		// cURLが使える場合
-		if (is_callable('curl_multi_init')) {
-			
-			//マルチハンドルリソース作成
-			$mh = curl_multi_init();
-			
-			// 1個ずつマルチハンドルに追加
-			foreach ($this->handles as $ch)
-				if (is_resource($ch))
-					curl_multi_add_handle($mh,$ch);
-			
-			// cURLマルチリクエスト実行
-			$active = 0;
-			do {
-				curl_multi_exec($mh,$active);
-			} while ($active>0);
-			
+		// 送信先のURI成分を求める
+		$uri = parse_url(self::getURL());
+		if (!$uri || !isset($uri['host'])) {
+			$uri = false;
+		} else {
+			if (!isset($uri['path']))
+				$uri['path'] = '/';
+			if (!isset($uri['port']))
+				$uri['port'] = $uri['scheme']==='https' ? 443 : 80;
+			$host = $uri['scheme']==='https' ? 'ssl://'.$uri['host'] : $uri['host'];
 		}
 		
-		// cURLリソースをイテレート
-		foreach ($this->handles as $i => $ch) {
+		// ソケットリソースを作成し、リクエストを送信
+		foreach ($this->postfields as $i => $query) {
+			if (!$uri) {
+				$fps[$i] = false;
+			} else {
+				$fps[$i] = @fsockopen($host,$uri['port']);
+				if ($fps[$i]) {
+					stream_set_blocking($fps[$i],0);
+					stream_set_timeout($fps[$i],86400);
+					$lines = array(
+						"POST {$uri['path']} HTTP/1.0",
+						"Host: {$host}",
+						"Connection: close",
+						"Content-Type: application/x-www-form-urlencoded",
+						"Content-Length: ".strlen($query),
+						"",
+						$query
+					);
+					fwrite($fps[$i],implode("\r\n",$lines));
+				}
+			}
+		}
+		
+		// 終わるまでループ
+		Do {
+			$active = false;
+			foreach ($fps as $i => $fp) {
+				if (!$fp || feof($fp)) {
+					continue;
+				} else {
+					$active = true;
+					if (!isset($res[$i]))
+						$res[$i] = '';
+					$res[$i] .= fgets($fp,10000);
+				}
+			}
+		} while ($active);
+		
+		// レスポンス整形
+		foreach ($res as $i => &$r) {
 		
 			if ($this->url===false) {
 			
 				// このファイルへのパス取得に失敗した場合
-				$res[$i] = UltimateOAuthModule::createErrorObject('Failed to get URL to this file itself.');
+				$r = UltimateOAuthModule::createErrorObject('Failed to get URL to this file itself.');
 				
-			} elseif (!is_callable('curl_multi_init')) {
+			} elseif ($this->postfields[$i]===null) {
 			
-				// cURLがコールできなかった場合
-				$res[$i] = UltimateOAuthModule::createErrorObject('cURL functions are not installed on this server.');
+				// UltimateOAuthオブジェクトではなかった場合
+				$r = UltimateOAuthModule::createErrorObject('This is not UltimateOAuth object.');
 				
-			} elseif ($ch===null) {
+			} elseif ($fps[$i]===false) {
 			
-				// cURLハンドルを作らなかった場合(UltimateOAuthオブジェクトではなかった場合)
-				$res[$i] = UltimateOAuthModule::createErrorObject('This is not UltimateOAuth object.');
+				// fsockopenでエラーが発生した場合
+				$r = UltimateOAuthModule::createErrorObject('Failed to open socket.');
 				
-			} elseif ($error=curl_error($ch)) {
+			} elseif (!($r=explode("\r\n\r\n",$r,2)) || !isset($r[1])) {
 			
-				// cURLでエラーが発生した場合
-				$res[$i] = UltimateOAuthModule::createErrorObject("cURL error occurred. (message: '{$error}')");
+				// レスポンスが異常な場合
+				$r = UltimateOAuthModule::createErrorObject('Invalid response.');
 				
-			} elseif (!($r=curl_multi_getcontent($ch))) {
-			
-				// cURLでレスポンスが正常に取得できなかった場合
-				$res[$i] = UltimateOAuthModule::createErrorObject('Failed to get valid cURL content. (Requests from this server to itself may be blocked.)');
-			
-			} elseif (($r=json_decode($r))===null) {
+			} elseif (($r=json_decode($r[1]))===null) {
 			
 				// JSONデコードに失敗した場合
-				$res[$i] = UltimateOAuthModule::createErrorObject('Failed to decode as JSON. There may be some errors.');
+				$r = UltimateOAuthModule::createErrorObject('Failed to decode as JSON. There may be some errors.');
 			
 			} else {
 			
 				// 正常時はレスポンスを代入すると同時に、UltimateOAuthオブジェクトを受け取ったプロパティをもとに再作成
 				$p = $this->properties[$i];
-				$obj     = (isset($r->object)   && is_string($r->object))   ? json_decode($r->object)   : null ;
+				$obj= (isset($r->object) && is_string($r->object)) ? json_decode($r->object) : null ;
 				if ($obj===null)
-					$obj     = new stdClass;
-				$res[$i] = (isset($r->response) && is_string($r->response)) ? json_decode($r->response) : null ;
-				if ($res[$i]===null)
-					$res[$i] = new stdClass;
+					$obj = new stdClass;
 				$this->objects[$i] = new UltimateOAuth(
 					isset($obj->consumer_key)          ? $obj->consumer_key          : $p->consumer_key          ,
 					isset($obj->consumer_secret)       ? $obj->consumer_secret       : $p->consumer_secret       ,
@@ -981,26 +991,20 @@ class UltimateOAuthMulti {
 					isset($obj->last_http_status_code) ? $obj->last_http_status_code : $p->last_http_status_code ,
 					isset($obj->last_called_endpoint)  ? $obj->last_called_endpoint  : $p->last_called_endpoint
 				);
+				$r = (isset($r->response) && is_string($r->response)) ? json_decode($r->response) : null ;
 				
 			}
 			
-			// cURLリソースを解放
-			if (is_resource($ch)) {
-				if (is_resource($mh))
-					curl_multi_remove_handle($mh,$ch);
-				curl_close($ch);
-			}
+			// リソースを解放
+			if (is_resource($fps[$i]))
+				fclose($fps[$i]);
 			
 		}
-		
-		// cURLマルチリソースを解放
-		if (is_callable('curl_multi_init'))
-			curl_multi_close($mh);
 			
 		// プロパティ初期化
 		$this->objects    = array();
-		$this->handles    = array();
 		$this->properties = array();
+		$this->postfields = array();
 		
 		// レスポンスを返す
 		return $res;
@@ -1017,9 +1021,9 @@ class UltimateOAuthMulti {
 	/*****************/
 	
 	# プロパティ宣言
-	private $handles;
 	private $objects;
 	private $properties;
+	private $postfields;
 	private $url;
 
 	# 絶対URL取得 (UNIX環境のみ対応)
@@ -1170,22 +1174,23 @@ class UltimateOAuthRotate {
 	
 	}
 	
-	# ログイン(返り値はデフォルトではBgOAuthGetTokenの実行結果の配列)
+	# ログイン(返り値はデフォルトではTrue[全て成功]/False[1つ以上失敗])
 	public function login(
-		$username,                 // スクリーンネームまたはEメールアドレス。
-		$password,                 // パスワード。
-		$without_curl=false,       // Trueで強制的にcURLを使わない逐次処理にする。
-		$require_all_success=false // Trueで返り値をTrue(全て成功)/False(1つ以上失敗)に変更。
+		$username,         // スクリーンネームまたはEメールアドレス。
+		$password,         // パスワード。
+		$return_bool=true, // Falseで返り値を各キーごとのに変更。
+		$parallel=true,    // Falseで逐次処理にする。
 	) {
-		
-		if (!is_callable('curl_multi_init') || $without_curl)
-			return $this->login_without_curl($username,$password,$require_all_success);
+	
+		if ($parallel)
+			return $this->login_async($username,$password,$return_bool);
 		else
-			return $this->login_with_curl($username,$password,$require_all_success);
+			return $this->login_sync($username,$password,$return_bool);
 	
 	}
 	
 	# このクラス内に存在しないメソッドがコールされたとき代わりにこのメソッドが実行される
+	// あたかもこのクラスの中に
 	public function __call(
 		$name, // メソッド名。UltimateOAuthにあるものを呼ぶ。
 		$args  // 引数の配列。
@@ -1341,9 +1346,9 @@ class UltimateOAuthRotate {
 	
 	}
 	
-	# cURLでログイン
-	private function login_with_curl($username,$password,$require_all_success) {
-		
+	# 非同期ログイン(高速)
+	private function login_async($username,$password,$return_bool) {
+	
 		// UltimateOAuthMultiオブジェクト作成
 		$uom = new UltimateOAuthMulti();
 		
@@ -1359,8 +1364,8 @@ class UltimateOAuthRotate {
 			$uom->exec()
 		);
 		
-		// $require_all_successの有無に応じてレスポンスを切り替え
-		if ($require_all_success) {
+		// $return_boolの有無に応じてレスポンスを切り替え
+		if ($return_bool) {
 			foreach ($res as $r) {
 				if (isset($r->errors))
 					return false;
@@ -1369,39 +1374,41 @@ class UltimateOAuthRotate {
 		} else {
 			return $res;
 		}
-		
+	
 	}
 	
-	# cURLを使わずにログイン
-	private function login_without_curl($username,$password,$require_all_success) {
-		
+	# 同期ログイン(低速)
+	private function login_sync($username,$password,$return_bool) {
+	
 		// my,officialともに全てのUltimateOAuthオブジェクトで認証させる
 		// $require_all_successがTrueならば失敗した段階でFalseを返す
 		$res = array();
 		foreach ($this->my as $name => &$item) {
 			$r = $item->BgOAuthGetToken($username,$password);
-			if ($require_all_success && isset($r->errors))
+			if ($return_bool && isset($r->errors))
 				return false;
 			$res[$name] = $r;
 		}
 		foreach ($this->official as $name => &$item) {
 			$r = $item->BgOAuthGetToken($username,$password);
-			if ($require_all_success && isset($r->errors))
+			if ($return_bool && isset($r->errors))
 				return false;
 			$res[$name] = $r;
 		}
 		
-		// $require_all_successの有無に応じてレスポンスを切り替え
-		if ($require_all_success)
+		// $return_boolの有無に応じてレスポンスを切り替え
+		if ($return_bool)
 			return true;
 		else
 			return $res;
-		
+	
 	}
+	
 
 }
 
 /**** 共通モジュール ****/
+// 内部的に使うもの
 class UltimateOAuthModule {
 	
 	# 自然順にキーソートした配列を返す
@@ -1495,4 +1502,5 @@ class UltimateOAuthModule {
 
 }
 
+// マルチリクエストが来ているかどうかチェック
 UltimateOAuthMulti::call();
