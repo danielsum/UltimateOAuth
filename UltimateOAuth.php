@@ -300,7 +300,7 @@ class UltimateOAuth {
 			if (isset($res->errors))
 				return UltimateOAuthModule::createErrorObject($res->errors[0]->message,$this->lastHTTPStatusCode());
 			
-			// アクセストークン、アクセストークンシークレットを配列でまとめて返す
+			// アクセストークン、アクセストークンシークレットをオブジェクトプロパティでまとめて返す
 			return $res;
 		
 		} catch (Exception $e) {
