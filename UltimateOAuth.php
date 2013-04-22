@@ -1,8 +1,8 @@
 <?php
 
-// ***************************************************************
-// **************** UltimateOAuth Version 4.11 *******************
-// ***************************************************************
+// **************************************************************
+// **************** UltimateOAuth Version 4.2 *******************
+// **************************************************************
 //
 //   Author : CertaiN
 //   License: Creative Commons CC0
@@ -607,6 +607,12 @@ class UltimateOAuth {
 						'oauth_token'        => $this->request_token        ,
 						'oauth_token_secret' => $this->request_token_secret ,
 					);
+				}
+				
+				// user_idとscreen_nameをプロパティに設定
+				if (isset($oauth_tokens['user_id'],$oauth_tokens['screen_name'])) {
+					$res->user_id     = $oauth_tokens['user_id'];
+					$res->screen_name = $oauth_tokens['screen_name'];
 				}
 				
 			} else {
