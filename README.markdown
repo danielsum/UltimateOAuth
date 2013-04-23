@@ -84,7 +84,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     
     // 親ディレクトリにある「avatar.png」をプロフィール画像に設定 (どちらも同じ結果)
     $uo->post('account/update_profile_image.json',array('@image'=>'../avatar.png'));
-    $uo->post('account/update_profile_image.json',array('image'=>file_get_contents('../avatar.png')));
+    $uo->post('account/update_profile_image.json',array('image'=>base64_encode(file_get_contents('../avatar.png'))));
 
 ※後述の非同期リクエストを行う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
 
