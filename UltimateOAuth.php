@@ -1,8 +1,8 @@
 <?php
 
-// **************************************************************
-// **************** UltimateOAuth Version 4.2 *******************
-// **************************************************************
+// ***************************************************************
+// **************** UltimateOAuth Version 4.3 ********************
+// ***************************************************************
 //
 //   Author : CertaiN
 //   License: Creative Commons CC0
@@ -201,20 +201,20 @@ class UltimateOAuth {
 		return $this->OAuthRequest($endpoint,'GET',$params,true);
 	}
 	
-	# POSTリクエスト用ラッパー
+	# POSTリクエスト用ラッパー(ファイル名は取得時にBASE64エンコード)
 	public function post(
 		$endpoint                , // エンドポイント。完全URL、部分URL(「statuses/update.json」などの表記)に対応。
-		$params        = array() , // パラメータ。連想配列で渡す。
+		$params        = array() , // パラメータ。連想配列で渡す。ファイル名を指す場合はキーの頭に「@」を付加する。
 		$wait_response = true      // FALSEにした場合レスポンスを待たずにNULLで返す。
 	) {
 		return $this->OAuthRequest($endpoint,'POST',$params,$wait_response);
 	}
 	
-	# 通常のOAuthRequest
+	# 通常のOAuthRequest(ファイル名は取得時にBASE64エンコード)
 	public function OAuthRequest(
 		$endpoint                , // エンドポイント。完全URL、部分URLに対応。
 		$method        = 'GET'   , // メソッド。「GET」「POST」のいずれか。
-		$params        = array() , // パラメータ。連想配列で渡す。
+		$params        = array() , // パラメータ。連想配列で渡す。ファイル名を指す場合はキーの頭に「@」を付加する。
 		$wait_response = true      // FALSEにした場合レスポンスを待たずにNULLで返す。
 	) {
 		// パラメータ最適化
@@ -428,7 +428,7 @@ class UltimateOAuth {
 				throw new Exception('Multipart requests are supported only on the POST OAuth method in this library.');
 			
 			// URIをパース
-			$elements = self::parse_uri($uri);
+			$elements = UltimateOAuthModule::parse_uri($uri);
 			
 			// パラメータ配列にいったんURIにあったものを追加
 			parse_str($elements['query'],$temp);
@@ -446,7 +446,25 @@ class UltimateOAuth {
 			
 			if (!$scraping) {
 				
-				// OAuth認証のとき
+				if (!$multipart) {
+					// マルチパートでないとき
+					$_params = array();
+					foreach ($params as $key => $value) {
+						if (strpos($key,'@')===0) {
+							// キーの頭に「@」がつく場合のみ、それを除去すると同時に、値を「ファイル名」として扱う
+							if ($value!=='0' && !$value)
+								throw new Exception("Filename is empty.");
+							if (!is_file($value))
+								throw new Exception("File '{$value}' not found.");
+							// BASE64エンコード
+							$_params[substr($key,1)] = base64_encode(@file_get_contents($value));
+						} else {
+							$_params[$key] = $value;
+						}
+					}
+					$params = $_params;
+					unset($_params);
+				}
 				
 				// QueryString取得
 				$query = $this->getQueryString(
@@ -499,28 +517,26 @@ class UltimateOAuth {
 					$cts_lines[] = '--'.$boundary;
 					// キーの頭に「@」がつく場合のみ、それを除去すると同時に、値を「ファイル名」として扱う
 					if (strpos($key,'@')===0) {
+						if ($value!=='0' && !$value)
+							throw new Exception("Filename is empty.");
 						if (!is_file($value))
 							throw new Exception("File '{$value}' not found.");
-						$disposition = sprintf('form-data; name="%s"; filename="%s"',
-							substr($key,1),
-							basename($value)
-						);
-						array_push($cts_lines,
-							'Content-Disposition: ' .  $disposition              ,
-							'Content-Type: '        . 'application/octet-stream' ,
-							''                                                   ,
-							file_get_contents($value)
-						);
-					} else {
+						$is_file = true;
 						$disposition = sprintf('form-data; name="%s"',
 							substr($key,1)
 						);
-						array_push($cts_lines,
-							'Content-Disposition: ' . $disposition ,
-							''                                     ,
-							$value
+					} else {
+						$is_file = false;
+						$disposition = sprintf('form-data; name="%s"',
+							$key
 						);
 					}
+					array_push($cts_lines,
+						'Content-Disposition: ' .  $disposition              ,
+						'Content-Type: '        . 'application/octet-stream' ,
+						''                                                   ,
+						$is_file ? @file_get_contents($value) : $value
+					);
 				}
 				$cts_lines[] = '--'.$boundary.'--';
 				
@@ -585,7 +601,7 @@ class UltimateOAuth {
 				
 				// 失敗したらエラーを返す
 				if (!isset($oauth_tokens['oauth_token'],$oauth_tokens['oauth_token_secret']))
-					throw new Exception($res);
+					throw new Exception('Failed to parse response. There may be some errors.');
 				
 				// トークンを取得した場合、プロパティを上書き
 				if (empty($matches[1])) {
@@ -660,65 +676,6 @@ class UltimateOAuth {
 			return UltimateOAuthModule::createErrorObject($e->getMessage(),$this->lastHTTPStatusCode());
 		
 		}
-	
-	}
-	
-	# URIをパース
-	private function parse_uri($uri) {
-		
-		if (!UltimateOAuthModule::convertible($uri))
-			throw new Exception('URI isn\'t convertible to string.');
-		
-		$elements = parse_url($uri);
-		if ($elements===false)
-			throw new Exception('URI is invalid.');
-		
-		if (!isset($elements['host'])) {
-			
-			// 省略形の場合
-			
-			$elements['host']   = UltimateOAuthConfig::DEFAULT_HOST;
-			$elements['scheme'] = UltimateOAuthConfig::DEFAULT_SCHEME;
-			
-			// 「/」で始まる場合は1文字目を一旦削除
-			if (strpos($elements['path'],'/')===0)
-				$elements['path'] = substr($elements['path'],1);
-			
-			if (
-				strpos($elements['path'],'1')   !== 0 &&
-				strpos($elements['path'],'1.1') !== 0 &&
-				strpos($elements['path'],'i')   !== 0
-			) {
-				//バージョン記述がない場合
-				if (strpos($elements['path'],'activity/')!==false)
-					//アクティビティ系APIの場合はそのバージョン記述を追加
-					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION.'/'.$elements['path'];
-				elseif (strpos($elements['path'],'oauth/')===false)
-					//OAuth認証系API以外の場合はバージョン記述を追加
-					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_API_VERSION.'/'.$elements['path'];
-				else
-					//OAuth認証系APIの場合は「/」のみを追加
-					$elements['path'] = '/'.$elements['path'];
-			} else {
-				//バージョン記述がある場合、スラッシュのみを追加
-				$elements['path'] = '/'.$elements['path'];
-			}
-			
-		} else {
-		
-			// 完全なURLの場合
-			
-			if (!isset($elements['path']))
-				// パスがない場合は「/」に設定
-				$elements['path'] = '/';
-		
-		}
-		
-		if (!isset($elements['query']))
-			// クエリが無い場合は空文字に設定
-			$elements['query']  = '';
-			
-		return $elements;
 	
 	}
 	
@@ -1224,11 +1181,10 @@ class UltimateOAuthRotate {
 				// 最初の引数は必須
 				if (!isset($args[0]))
 					throw new Exception('First parameter required as URI.');
-				if (!UltimateOAuthModule::convertible($args[0]))
-					throw new Exception('First parameter isn\'t convertible to string.');
 				
 				// エンドポイント取得
-				$endpoint = UltimateOAuthModule::endpoint($args[0]);
+				$elements = UltimateOAuthModule::parse_uri($args[0]);
+				$endpoint = $elements['path'];
 				
 				// 番号→名前対応テーブル作成
 				$table = array_keys(self::getOfficialKeys());
@@ -1465,7 +1421,7 @@ class UltimateOAuthModule {
 	
 	}
 	
-	# call_user_func_arrayラッパー
+	# call_user_func_arrayラッパー(例外をスローする可能性あり)
 	public static function call($callable,$args) {
 		
 		$res = @call_user_func_array($callable,$args);
@@ -1475,35 +1431,63 @@ class UltimateOAuthModule {
 		
 	}
 	
-	# URIからエンドポイントのパスのみ抽出
-	public static function endpoint($uri) {
-	
+	# URIをパース(例外をスローする可能性あり)
+	public static function parse_uri($uri) {
+		
+		if (!self::convertible($uri))
+			throw new Exception('URI isn\'t convertible to string.');
+		
 		$elements = parse_url($uri);
 		if ($elements===false)
-			throw new Exception('Invalid URI');
+			throw new Exception('URI is invalid.');
+		
 		if (!isset($elements['host'])) {
-			if (strpos($elements['path']))
-				$elements['path'] = substr($elements['path'],1);
+			
+			// 省略形の場合
+			
+			$elements['host']   = UltimateOAuthConfig::DEFAULT_HOST;
+			$elements['scheme'] = UltimateOAuthConfig::DEFAULT_SCHEME;
+			
+			// 「/」で始まる場合は一旦削除
+			$elements['path'] = preg_replace('@^/+@','',$elements['path']);
+			
 			if (
-				strpos($elements['path'],'1')   !== 0 &&
-				strpos($elements['path'],'1.1') !== 0 &&
-				strpos($elements['path'],'i')   !== 0
+				strpos($elements['path'],'1/')   !== 0 &&
+				strpos($elements['path'],'1.1/') !== 0 &&
+				strpos($elements['path'],'i/')   !== 0
 			) {
-				if (strpos($elements['path'],'activity/')!==false)
+				//バージョン記述がない場合
+				if (strpos($elements['path'],'activity/')===0 || strpos($elements['path'],'/activity/')!==false)
+					//アクティビティ系APIの場合はそのバージョン記述を追加
 					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION.'/'.$elements['path'];
-				elseif (strpos($elements['path'],'oauth/')===false)
+				elseif (strpos($elements['path'],'oauth/')!==0 && strpos($elements['path'],'/oauth/')===false)
+					//OAuth認証系API以外の場合はバージョン記述を追加
 					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_API_VERSION.'/'.$elements['path'];
 				else
+					//OAuth認証系APIの場合は「/」のみを追加
 					$elements['path'] = '/'.$elements['path'];
 			} else {
+				//バージョン記述がある場合、「/」のみを追加
 				$elements['path'] = '/'.$elements['path'];
 			}
+			
 		} else {
-			if (!isset($elements['path']))
-				$elements['path'] = '/';
-		}
-		return $elements['path'];
 		
+			// 完全なURLの場合
+			
+			if (!isset($elements['path']))
+				// パスがない場合は「/」に設定
+				$elements['path'] = '/';
+		
+		}
+		
+		if (!isset($elements['query']))
+			// クエリが無い場合は空文字に設定
+			$elements['query']  = '';
+		
+		// 返り値は必ず「host」「scheme」「path」「query」で構成される
+		return $elements;
+	
 	}
 
 }
