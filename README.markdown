@@ -13,6 +13,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
 + xAuth認証使いたいけどDM操作権限無いし第一許可下りない・・・
 + 今使ってるライブラリ画像アップロード対応してない・・・
 + レンタルサーバーなのでcURLとかPEARが使えない・・・
++ エラーコードを分かりやすく表示したい・・・
 
 そんな人にオススメ。
 初心者の方はまず [サンプル] をダウンロードして試用してみてください。
@@ -25,19 +26,68 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
 
 ***
 
+# 基本メソッド仕様 (詳細はライブラリ内参照)
+
+## UltimateOAuth
+
+    $uo = new UltimateOAuth( $consumer_key, $consumer_secret, $access_token='', $access_token_secret='' );
+    
+    (stdClass|Array|NULL) $uo->get                   ( $endpoint,                $params=array()                       );
+    (stdClass|Array|NULL) $uo->post                  ( $endpoint,                $params=array(), $wait_response=false );
+    (stdClass|Array|NULL) $uo->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=false );
+    (stdClass|Array|NULL) $uo->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=false );
+    
+    (stdClass) $uo->BgOAuthGetToken ( $username, $password );
+    
+    (String) $uo->getAuthorizeURL    ( $force_login=false );
+    (String) $uo->getAuthenticateURL ( $force_login=false );
+    
+    (String) $uo->save();
+    (UltimateOAuth) UltimateOAuth::load($data);
+
+## UltimateOAuthMulti
+
+    $uom = new UltimateOAuthMulti;
+    
+    (NULL)  $uom->addjob ( &$uo, $method, $param0, $param1, $param2, ... );
+    (Array) $uom->exec();
+
+## UltimateOAuthRotate
+
+    $uor = new UltimateOAuthRotate;
+    
+    (Bool)       $uor->register( $app_name, $app_consumer_key, $app_consumer_secret );
+    (Bool|Array) $uor->login ( $username, $password );
+    (Bool)       $uor->setCurrent( $app_name );
+    
+    (stdClass|Array|NULL) $uor->get                   ( $endpoint,                $params=array()                       );
+    (stdClass|Array|NULL) $uor->post                  ( $endpoint,                $params=array(), $wait_response=false );
+    (stdClass|Array|NULL) $uor->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=false );
+    (stdClass|Array|NULL) $uor->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=false );
+    
+    (stdClass) $uor->BgOAuthGetToken ( $username, $password );
+
+
+***
+
 # このライブラリの特長を生かした使い方
 
-## 画像を添付してツイート
-同一ディレクトリにあるtest.pngを添付してツイート。  
-エラーチェックは省略。
+## メディアつきリクエスト
 
     <?php
     
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
-    // パラメータ「media」の頭に「@」をつけると値がファイルパスの扱いになる
-    $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'test.png'));
- 
+    // 「img」ディレクトリにある「test.png」を添付して「test」とツイート (どちらも同じ結果)
+    $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'img/test.png'));
+    $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','media[]'=>file_get_contents('img/test.png')));
+    
+    // 親ディレクトリにある「avatar.png」をプロフィール画像に設定 (どちらも同じ結果)
+    $uo->post('account/update_profile_image.json',array('@image'=>'../avatar.png'));
+    $uo->post('account/update_profile_image.json',array('image'=>file_get_contents('../avatar.png')));
+
+※後述の非同期リクエストを行う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
+
 ## 高速非同期リクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
 
@@ -46,7 +96,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     # $uoに認証済みのUltimateOAuthオブジェクトがセットされた状態で
     
     for ($i=1;$i<=10;$i++)
-      // POSTに関しては、$wait_responseにfalseを渡すことで、非同期リクエストが可能
+      // $wait_responseがfalseのとき、エンドポイントを叩きに行ったらすぐ接続を切って次のリクエストをする
       $uo->post('statuses/update.json',array('status'=>'Bomb',str_repeat('!',$i)),false);
 
 ## バックグラウンドOAuth(疑似xAuth)で一発認証
