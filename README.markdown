@@ -57,7 +57,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uor = new UltimateOAuthRotate;
     
     (Bool)       $uor->register( $app_name, $app_consumer_key, $app_consumer_secret );
-    (Bool|Array) $uor->login ( $username, $password );
+    (Bool|Array) $uor->login ( $username, $password, $return_bool=true, $parallel=true );
     (Bool)       $uor->setCurrent( $app_name );
     
     (stdClass|Array)      $uor->get                   ( $endpoint,                $params=array()                       );
@@ -91,7 +91,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
 
 ※後述のUltimateOAuthMultiクラスを使う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
 
-## 高速非同期リクエスト(いわゆる爆撃)
+## レスポンスを待たないリクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
 
     <?php
@@ -110,16 +110,16 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     require_once('UltimateOAuth.php');
     
     // UltimateOAuthオブジェクト生成
-    $uo = new UltimateOAuth($consumer_key,$consumer_secret);
+    $uo = new UltimateOAuth('コンシューマーキー','コンシューマーシークレット');
     
     // BgOAuthGetTokenメソッドをコール
     $res = $uo->BgOAuthGetToken('スクリーンネーム(又はメールアドレス)','パスワード');
     
-    // エラーチェック
+    // レスポンスチェック
     if (isset($res->errors))
-      echo("{$res->errors[0]->code}: {$res->errors[0]->message}<br />\n");
-    
-    # この段階で認証完了
+      echo "{$res->errors[0]->code}: {$res->errors[0]->message}";
+    else
+      echo 'Login successfully.';
 
 ## UltimateOAuthMultiクラスを使う
 ここでは例として、複数のアカウントで同時にバックグラウンドOAuth認証を行う。  
@@ -132,7 +132,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     
     // UltimateOAuthオブジェクト生成
     $uo_1 = new UltimateOAuth('コンシューマーキー','コンシューマーシークレット');
-    $uo_2 = clone $uo_1; //$uo_1をコピー
+    $uo_2 = clone $uo_1; // $uo_1をコピー
     
     // UltimateOAuthMultiオブジェクト生成
     $uom = new UltimateOAuthMulti();
@@ -141,15 +141,19 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uom->addjob($uo_1,'BgOAuthGetToken','スクリーンネーム1','パスワード1');
     $uom->addjob($uo_1,'BgOAuthGetToken','スクリーンネーム2','パスワード2');
     
-    // ジョブ実行
-    $uom->exec();
+    // ジョブ実行(値を返した後、$uomのジョブはリセットされる)
+    $res = $uom->exec();
     
-    # この段階で認証完了
-    
-    /*
-    execメソッドの返り値はそれぞれのレスポンスの配列になっているので、
-    そこからエラー処理することもまた可能。
-    */
+    // レスポンスチェック
+    try {
+      foreach ($res as $i => $r) {
+        if (isset($r->errors))
+          throw new Exception("On job[{$i}]; {$r->errors[0]->code}: {$r->errors[0]->message}");
+      }
+      echo 'All done.';
+    } catch (Exception $e) {
+      echo $e->getMessage();
+    }
 
 ## UltimateOAuthRotateクラスを使う
 自動的にGETリクエストに関してのAPI規制回避を行えるクラス。  
@@ -165,21 +169,25 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uor = new UltimateOAuthRotate();
     
     // あなたのアプリケーションキーを登録
-    $uor->register('識別子(アプリケーション名1)','コンシューマーキー1','コンシューマーシークレット1');
-    $uor->register('識別子(アプリケーション名2)','コンシューマーキー2','コンシューマーシークレット2');
+    $uor->register('識別子(アプリケーション名)1','コンシューマーキー1','コンシューマーシークレット1');
+    $uor->register('識別子(アプリケーション名)2','コンシューマーキー2','コンシューマーシークレット2');
     
     // マルチスレッドであなたのキーに加えて公式キー複数個を認証する
     $res = $uor->login('スクリーンネーム','パスワード');
     
-    # $resがTrueの場合全てのキーの認証の成功を意味し、この段階で認証完了
+    // レスポンスチェック(Falseなら1つ以上エラーが発生している)
+    if (!$res)
+      die('Login error. Check your username and password again.');
     
-    /*
-    この後は$uorは通常の$uoのように扱え、
-    GETリクエスト毎に内部で公式キーのローテーションが行われ、
-    自動的にAPI規制を回避できる。
-    POSTリクエストに関しては、setCurrentメソッドで指定されたキーが使われる。
-    未指定の場合はライブラリ側が適当に選択する。
-    */
+    // POSTに使うアプリケーション名を指定
+    $uor->setCurrent('識別子(アプリケーション名)');
+    
+    // 指定したキーからツイート(未指定の場合ライブラリが適当に選択)
+    $uor->post('statuses/update.json',array('status'=>'Test Tweet'));
+    
+    // 公式キーをローテーションしながらアクティビティを50回連続取得
+    for($i=0;$i<50;$i++)
+      var_dump($uor->get('activity/about_me.json'));
 
 [UltimateOAuth]: https://github.com/Certainist/UltimateOAuth/blob/master/UltimateOAuth.php
 [サンプル]: https://github.com/Certainist/UltimateOAuth/tree/master/sample
