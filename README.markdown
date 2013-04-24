@@ -86,7 +86,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uo->post('account/update_profile_image.json',array('@image'=>'../avatar.png'));
     $uo->post('account/update_profile_image.json',array('image'=>base64_encode(file_get_contents('../avatar.png'))));
 
-※後述の非同期リクエストを行う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
+※後述のUltimateOAuthMultiクラスを使う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
 
 ## 高速非同期リクエスト(いわゆる爆撃)
 「Bomb!」「Bomb!!」「Bomb!!!」…とツイートを10回リクエスト。
