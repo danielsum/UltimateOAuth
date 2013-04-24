@@ -135,7 +135,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uo_2 = clone $uo_1; // $uo_1をコピー
     
     // UltimateOAuthMultiオブジェクト生成
-    $uom = new UltimateOAuthMulti();
+    $uom = new UltimateOAuthMulti;
     
     // ジョブ追加(対象のオブジェクト、メソッド名、パラメータ(可変引数)を渡す)
     $uom->addjob($uo_1,'BgOAuthGetToken','スクリーンネーム1','パスワード1');
@@ -165,8 +165,8 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     // UltimateOAuth.php読み込み
     require_once('UltimateOAuth.php');
     
-    // UltimateOAuthRotate生成
-    $uor = new UltimateOAuthRotate();
+    // UltimateOAuthRotateオブジェクト生成
+    $uor = new UltimateOAuthRotate;
     
     // あなたのアプリケーションキーを登録
     $uor->register('識別子(アプリケーション名)1','コンシューマーキー1','コンシューマーシークレット1');
