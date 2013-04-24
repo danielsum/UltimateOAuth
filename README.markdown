@@ -32,7 +32,7 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
 
     $uo = new UltimateOAuth( $consumer_key, $consumer_secret, $access_token='', $access_token_secret='' );
     
-    (stdClass|Array|NULL) $uo->get                   ( $endpoint,                $params=array()                       );
+    (stdClass|Array)      $uo->get                   ( $endpoint,                $params=array()                       );
     (stdClass|Array|NULL) $uo->post                  ( $endpoint,                $params=array(), $wait_response=false );
     (stdClass|Array|NULL) $uo->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=false );
     (stdClass|Array|NULL) $uo->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=false );
