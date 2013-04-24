@@ -1,8 +1,8 @@
 <?php
 
-// ***************************************************************
-// **************** UltimateOAuth Version 4.3 ********************
-// ***************************************************************
+// ****************************************************************
+// **************** UltimateOAuth Version 4.31 ********************
+// ****************************************************************
 //
 //   Author : CertaiN
 //   License: Creative Commons CC0
@@ -522,8 +522,9 @@ class UltimateOAuth {
 						if (!is_file($value))
 							throw new Exception("File '{$value}' not found.");
 						$is_file = true;
-						$disposition = sprintf('form-data; name="%s"',
-							substr($key,1)
+						$disposition = sprintf('form-data; name="%s"; filename="%s"',
+							substr($key,1),
+							md5(mt_rand())
 						);
 					} else {
 						$is_file = false;

@@ -82,9 +82,12 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','@media[]'=>'img/test.png'));
     $uo->OAuthRequestMultipart('statuses/update_with_media.json',array('status'=>'test','media[]'=>file_get_contents('img/test.png')));
     
-    // 親ディレクトリにある「avatar.png」をプロフィール画像に設定 (どちらも同じ結果)
+    // 親ディレクトリにある「avatar.png」をプロフィール画像に設定 (全て同じ結果)
+    // ※APIドキュメントに説明は無いがこちらはマルチパートでも可能
     $uo->post('account/update_profile_image.json',array('@image'=>'../avatar.png'));
     $uo->post('account/update_profile_image.json',array('image'=>base64_encode(file_get_contents('../avatar.png'))));
+    $uo->OAuthRequestMultipart('account/update_profile_image.json',array('@image'=>'../avatar.png'));
+    $uo->OAuthRequestMultipart('account/update_profile_image.json',array('image'=>file_get_contents('../avatar.png')));
 
 ※後述のUltimateOAuthMultiクラスを使う場合は、「@」指定におけるカレントディレクトリが __このファイル自身__ になることに注意。
 
