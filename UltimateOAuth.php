@@ -1,7 +1,7 @@
 <?php
 
 // ****************************************************************
-// **************** UltimateOAuth Version 4.31 ********************
+// **************** UltimateOAuth Version 4.32 ********************
 // ****************************************************************
 //
 //   Author : CertaiN
@@ -86,7 +86,14 @@ class UltimateOAuth {
 	/**** Public ****/
 	/****************/
 	
-	# プロパティ読み取り
+	# プロパティはReadonly
+	public function __get($name) {
+		if (!isset($this->$name))
+			throw new Exception("Undefined property: {$name}");
+		return $this->$name;
+	}
+	
+	# プロパティ読み取り用メソッド(互換性のため維持)
 	public function consumer_key()         { return $this->consumer_key            ; }
 	public function consumer_secret()      { return $this->consumer_secret         ; }
 	public function access_token()         { return $this->access_token            ; }
