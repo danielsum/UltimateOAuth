@@ -32,10 +32,10 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
 
     $uo = new UltimateOAuth( $consumer_key, $consumer_secret, $access_token='', $access_token_secret='' );
     
-    (stdClass|Array)      $uo->get                   ( $endpoint,                $params=array()                       );
-    (stdClass|Array|NULL) $uo->post                  ( $endpoint,                $params=array(), $wait_response=false );
-    (stdClass|Array|NULL) $uo->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=false );
-    (stdClass|Array|NULL) $uo->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=false );
+    (stdClass|Array)      $uo->get                   ( $endpoint,                $params=array()                      );
+    (stdClass|Array|NULL) $uo->post                  ( $endpoint,                $params=array(), $wait_response=true );
+    (stdClass|Array|NULL) $uo->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=true );
+    (stdClass|Array|NULL) $uo->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=true );
     
     (stdClass) $uo->BgOAuthGetToken ( $username, $password );
     
@@ -60,10 +60,10 @@ TwitterAPIに特化した、非常に高機能なOAuthライブラリです。
     (Bool|Array) $uor->login ( $username, $password, $return_bool=true, $parallel=true );
     (Bool)       $uor->setCurrent( $app_name );
     
-    (stdClass|Array)      $uor->get                   ( $endpoint,                $params=array()                       );
-    (stdClass|Array|NULL) $uor->post                  ( $endpoint,                $params=array(), $wait_response=false );
-    (stdClass|Array|NULL) $uor->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=false );
-    (stdClass|Array|NULL) $uor->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=false );
+    (stdClass|Array)      $uor->get                   ( $endpoint,                $params=array()                      );
+    (stdClass|Array|NULL) $uor->post                  ( $endpoint,                $params=array(), $wait_response=true );
+    (stdClass|Array|NULL) $uor->OAuthRequest          ( $endpoint, $method='GET', $params=array(), $wait_response=true );
+    (stdClass|Array|NULL) $uor->OAuthRequestMultipart ( $endpoint,                $params=array(), $wait_response=true );
     
     (stdClass) $uor->BgOAuthGetToken ( $username, $password );
 
