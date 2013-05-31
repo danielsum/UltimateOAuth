@@ -1,7 +1,7 @@
 <?php
 
 // ****************************************************************
-// **************** UltimateOAuth Version 4.32 ********************
+// **************** UltimateOAuth Version 4.33 ********************
 // ****************************************************************
 //
 //   Author : CertaiN
@@ -1465,19 +1465,28 @@ class UltimateOAuthModule {
 				strpos($elements['path'],'i/')   !== 0
 			) {
 				//バージョン記述がない場合
-				if (strpos($elements['path'],'activity/')===0 || strpos($elements['path'],'/activity/')!==false)
+				if (strpos($elements['path'],'activity/')===0 || strpos($elements['path'],'/activity/')!==false) {
 					//アクティビティ系APIの場合はそのバージョン記述を追加
 					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION.'/'.$elements['path'];
-				elseif (strpos($elements['path'],'oauth/')!==0 && strpos($elements['path'],'/oauth/')===false)
+					$is_oauth = false;
+				} elseif (strpos($elements['path'],'oauth/')!==0 && strpos($elements['path'],'/oauth/')===false) {
 					//OAuth認証系API以外の場合はバージョン記述を追加
 					$elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_API_VERSION.'/'.$elements['path'];
-				else
+					$is_oauth = false;
+				} else {
 					//OAuth認証系APIの場合は「/」のみを追加
 					$elements['path'] = '/'.$elements['path'];
+					$is_oauth = true;
+				}
 			} else {
 				//バージョン記述がある場合、「/」のみを追加
 				$elements['path'] = '/'.$elements['path'];
+				$is_oauth = false;
 			}
+			
+			// OAuth関連以外で末尾にフォーマットが省略されていたら「.json」を付加する
+			if (!$is_oauth && !preg_match('@/[^/]*+\\.[^/.]++$@',$elements['path']))
+				$elements['path'] .= '.json';
 			
 		} else {
 		
