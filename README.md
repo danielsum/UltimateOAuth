@@ -57,6 +57,8 @@ $uor = new UltimateOAuthRotate;
 (UltimateOAuth|Bool) $uor->getInstance ( $name );
 ```
 
+------------------------------------------------------------------
+
 1. OAuth Authentication
 -----------------------
 
@@ -177,6 +179,8 @@ $uo = new UltimateOAuth($consumer_key, $consumer_secret, $access_token, $access_
 For saving authenticated UltimateOAuth object as string, use `serialize()` and `unserialize()`.
 
 
+------------------------------------------------------------------
+
 2-1. Class Detail - UltimateOAuth
 ----------------------------------
 
@@ -195,6 +199,7 @@ $uo = new UltimateOAuth($consumer_key, $consumer_secret, $access_token, $access_
 - *__$access\_token__*, *__$access\_token__*  
   Not necessary if you authenticate or authorize later.
 
+=========================================
 
 ### UltimateOAuth::OAuthRequest()
 
@@ -258,6 +263,10 @@ $uo->OAuthRequest($endpoints, $method, $params, $wait_response);
   
 - If `$wait_response` has been set to FALSE, return **NULL**.
 
+
+=========================================
+
+
 ### UltimateOAuth::get()<br />UltimateOAuth::post()
 
 ```php
@@ -267,6 +276,11 @@ $uo->post($endpoints, $params, $wait_response);
 ```
 
 Wrapper for **UltimateOAuth::OAuthRequest()**.
+
+Mainly used for the endpoint `statuses/update_with_media`.
+
+
+=========================================
 
 
 ### UltimateOAuth::OAuthRequestMultipart()
@@ -297,6 +311,9 @@ $uo->OAuthRequestMultipart($endpoints, $params, $wait_response);
 #### Return Value
 - Same as **UltimateOAuth::OAuthRequest()**.
 
+
+=========================================
+
   
 ### UltimateOAuth::directGetToken()
 
@@ -319,11 +336,44 @@ $uo->directGetToken($username, $password);
 #### Return Value
 - Same as **UltimateOAuth::OAuthRequest()** when requesting `oauth/access_token`.
 
+
+=========================================
+
+
+### UltimateOAuth::getAuthenticateURL()<br />UltimateOAuth::getAuthorizeURL()
+
+```php
+<?php
+$uo->getAuthenticateURL($force_login);
+$uo->getAuthorizeURL($force_login);
+```
+
+#### Arguments
+
+- *__$force\_login__*  
+  Whether force logined user to login again.
+  **FALSE** as default.
   
+#### Return Value
+
+- URL String.
+
+#### Note: What is the difference between *Authenticate* and *Authorize* ?
+
+|                | Authenticate  |  Authorize   |
+| -------------: |:---------------:| :-----------:|
+| New User       | Jump to Twitter | Jump to Twitter |
+| Logined User   | Jump to Twitter, but if you set your application<br /> **__Allow this application to be used to Sign in with Twitter__**, <br />quickly jump back to your callback URL.  |  Jump to Twitter  |
+
+
 2-2. Class Detail - UltimateOAuthMulti
 --------------------------------------
 
 This class enables you to execute multiple request **parallelly**.
+
+
+=========================================
+
 
 ### UltimateOAuthMulti::__construct()
 
@@ -331,6 +381,10 @@ This class enables you to execute multiple request **parallelly**.
 <?php
 $uom = new UltimateOAuthMulti;
 ```
+
+
+=========================================
+
 
 ### UltimateOAuthMulti::enqueue()
 
@@ -340,6 +394,10 @@ Enqueue a new job.
 <?php
 $uom->enqueue($uo, $method, $arg1, $arg2, ...);
 ```
+
+
+=========================================
+
 
 #### Arguments
 
@@ -351,6 +409,8 @@ $uom->enqueue($uo, $method, $arg1, $arg2, ...);
   
 - *__$arg1__*, *__$arg2__*, *__...__*  
   Example: `'statuses/update', 'status=TestTweet'`
+
+=========================================
   
   
 ### UltimateOAuthMulti::execute()
@@ -371,6 +431,9 @@ $uom->execute($wait_resposne);
 #### Return Value
 
 - Return an **Array**, collection of the results.
+
+
+=========================================
 
 
 2-3. Class Detail - UltimateOAuthRotate
@@ -395,12 +458,16 @@ Also you can use very useful **secret endpoints**, like:
 - `POST friendships/accept_all`  
   Accept all follower requests.
 
+=========================================
+  
 ### UltimateOAuthMulti::__construct()
 
 ```php
 <?php
 $uor = new UltimateOAuthRotate;
 ```
+
+=========================================
 
 ### UltimateOAuthMulti::register()
 
@@ -423,6 +490,10 @@ $uor->register($name, $consumer_key, $consumer_secret);
 #### Return Value
 
 - Return result as **TRUE or FALSE**.
+
+
+=========================================
+
 
 ### UltimateOAuthMulti::login()
 
@@ -452,6 +523,9 @@ $uor->login($username, $password, $return_array);
 
 - If `$return_array` is TRUE, return an **Array**, collection of the results.
 
+
+=========================================
+
 ### UltimateOAuthMulti::setCurrent()
 
 Select an application for **POST** requesting.
@@ -471,6 +545,10 @@ $uor->setCurrent($name);
 
 - Return result as **TRUE or FALSE**.
 
+
+=========================================
+
+
 ### UltimateOAuthMulti::getInstance($name)
 
 Get **clone** of specified UltimateOAuth Instance.
@@ -488,6 +566,9 @@ $uor->getInstance($name);
 #### Return Value
 
 - Return **UltimateOAuth** instance or **FALSE**.
+
+=========================================
+
 
 ### UltimateOAuthMulti::__call()
 
