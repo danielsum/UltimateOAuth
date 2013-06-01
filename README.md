@@ -415,11 +415,12 @@ $uom->enqueue($uo, $method, $arg1, $arg2, ...);
   
 ### UltimateOAuthMulti::execute()
 
-Execute All jobs.
+Execute All jobs.  
+After executing, all queues are dequeued.
 
 ```php
 <?php
-$uom->execute($wait_resposne);
+$uom->execute($wait_processes);
 ```
 
 #### Arguments
