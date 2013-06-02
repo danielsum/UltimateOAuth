@@ -2,6 +2,7 @@ UltimateOAuth
 =============
 *A __highly advanced__ Twitter library in PHP.*
 
+[日本語](http://github.com/certainist/UltimateOAuth/README-Japanese.md)
 
 @Version: 5.0.0  
 @Author : CertaiN  
@@ -236,7 +237,7 @@ $uo->OAuthRequest($endpoints, $method, $params, $wait_response);
   
   **Note:**  
   You can't use this with `statuses/update_with_media`.  
-  Use **UltimateOAuth::OAuthRequest()** instead.
+  Use **UltimateOAuth::OAuthRequestMultipart()** instead.
   
 - *__$wait\_resposne__*  
   **TRUE** as default.
@@ -277,13 +278,12 @@ $uo->post($endpoints, $params, $wait_response);
 
 Wrapper for **UltimateOAuth::OAuthRequest()**.
 
-Mainly used for the endpoint `statuses/update_with_media`.
-
-
 =========================================
 
 
 ### UltimateOAuth::OAuthRequestMultipart()
+
+Mainly used for the endpoint `statuses/update_with_media`.
 
 ```php
 <?php
@@ -426,7 +426,7 @@ $uom->execute($wait_processes);
 #### Arguments
 
 - *__$wait\_processes__*  
-  Same as  *__$wait\_response__* of **UltimateOAuth::OAuthRequest()**.
+  Same as *__$wait\_response__* of **UltimateOAuth::OAuthRequest()**.  
   **TRUE** as default.
   
 #### Return Value
