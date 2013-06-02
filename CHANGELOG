@@ -2,6 +2,10 @@ UltimateOAuth - changelog
 ========================
 
 5.0.0 (2013-06-02)
+- UltimateOAuthModule::arrayfy()
+- Some of the UltimateOAuth constructor args
+
+5.0.0-dev (2013-06-02)
 + Renovated.
 + FreeBSD License
 - CC0 License
