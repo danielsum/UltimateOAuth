@@ -2,7 +2,7 @@ UltimateOAuth
 =============
 *__非常に高機能な__ PHPのTwitterライブラリです。*
 
-[English](http://github.com/certainist/UltimateOAuth/README.md)
+[English](https://github.com/Certainist/UltimateOAuth/blob/master/README.md)
 
 @Version: 5.0.0  
 @Author : CertaiN  

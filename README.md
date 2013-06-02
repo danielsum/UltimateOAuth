@@ -2,7 +2,7 @@ UltimateOAuth
 =============
 *A __highly advanced__ Twitter library in PHP.*
 
-[日本語](http://github.com/certainist/UltimateOAuth/README-Japanese.md)
+[日本語](https://github.com/Certainist/UltimateOAuth/blob/master/README-Japanese.md)
 
 @Version: 5.0.0  
 @Author : CertaiN  
