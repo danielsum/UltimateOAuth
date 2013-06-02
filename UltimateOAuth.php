@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.0.0-dev
+ * @Version: 5.0.0
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -72,29 +72,25 @@ class UltimateOAuth {
         $consumer_secret       = '', // Consumer Secret (Required)
         $access_token          = '', // Access Token        (Not necessary if you authenticate/authorize later)
         $access_token_secret   = '', // Access Token Secret (Not necessary if you authenticate/authorize later)
-        /*
-         * Don't use args below
-         */
-        $request_token         = '',
-        $request_token_secret  = '',
-        $oauth_verifier        = '',
-        $authenticity_token    = '',
-        $cookie                = array(),
-        $last_http_status_code = 0,
-        $last_called_endpoint  = ''
+        $request_token         = '', // Request Token        (Generally unnecessary)
+        $request_token_secret  = ''  // Request Token Secret (Generally unnecessary)
     ) {
+        
         // Validate arguments and set them as properties
-        $this->consumer_key          = UltimateOAuthModule::stringify($consumer_key)               ;
-        $this->consumer_secret       = UltimateOAuthModule::stringify($consumer_secret)            ;
-        $this->access_token          = UltimateOAuthModule::stringify($access_token)               ;
-        $this->access_token_secret   = UltimateOAuthModule::stringify($access_token_secret)        ;
-        $this->request_token         = UltimateOAuthModule::stringify($request_token)              ;
-        $this->request_token_secret  = UltimateOAuthModule::stringify($request_token_secret)       ;
-        $this->oauth_verifier        = UltimateOAuthModule::stringify($oauth_verifier)             ;
-        $this->authenticity_token    = UltimateOAuthModule::stringify($authenticity_token)         ;
-        $this->cookie                = UltimateOAuthModule::arrayfy($cookie)                       ;
-        $this->last_http_status_code = (int)UltimateOAuthModule::stringify($last_http_status_code) ;
-        $this->last_called_endpoint  = UltimateOAuthModule::stringify($last_called_endpoint)       ;
+        $this->consumer_key          = UltimateOAuthModule::stringify($consumer_key)         ;
+        $this->consumer_secret       = UltimateOAuthModule::stringify($consumer_secret)      ;
+        $this->access_token          = UltimateOAuthModule::stringify($access_token)         ;
+        $this->access_token_secret   = UltimateOAuthModule::stringify($access_token_secret)  ;
+        $this->request_token         = UltimateOAuthModule::stringify($request_token)        ;
+        $this->request_token_secret  = UltimateOAuthModule::stringify($request_token_secret) ;
+        
+        // Initialize other properties
+        $this->oauth_verifier        = ''      ;
+        $this->authenticity_token    = ''      ;
+        $this->cookie                = array() ;
+        $this->last_http_status_code = 0       ;
+        $this->last_called_endpoint  = ''      ;
+        
     }
     
     /*
@@ -1262,19 +1258,6 @@ class UltimateOAuthModule {
             (string) $var : 
             ''
         ;
-    }
-    
-    /*
-     *  (array) arrayfy() - Safe casting to 1D array.
-     */
-    public static function arrayfy($var) {
-        $ret = array();
-        if (is_array($var)) {
-            foreach ($var as $k => $v) {
-                $ret[$k] = self::stringify($v);
-            }
-        }
-        return $ret;
     }
     
     /*
