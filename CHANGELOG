@@ -1,6 +1,16 @@
 UltimateOAuth - changelog
 ========================
 
+5.1.0 (2013-06-05)
++ UltimateOAuthConfig settings
++ UltimateOAuthModule::arrayfy()
++ Some of the UltimateOAuth constructor args
++ UltimateOAuthMulti::execute_by_proc_open()
++ UltimateOAuthMulti::execute_by_fsockopen()
++ UltimateOAuthMulti::errorHandler()
++ UltimateOAuthMulti::checkRequest()
+- UltimateOAuthModule::call()
+
 5.0.0 (2013-06-02)
 - UltimateOAuthModule::arrayfy()
 - Some of the UltimateOAuth constructor args

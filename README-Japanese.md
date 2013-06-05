@@ -46,12 +46,13 @@ $uom = new UltimateOAuthMulti;
 
 ### UltimateOAuthRotate
 
-**UltimateOAuthRotate** クラスは **__call()** メソッドを用いることにより、 **UltimateOAuth** クラスのメソッドのうち上で述べたものには全て対応しています。
+**UltimateOAuthRotate** クラスは **__call()** メソッドを用いることにより、 **UltimateOAuth** クラスのメソッドのうち `get`, `post`, `OAuthRequest`, `OAuthRequestMultipart` には対応しています。
 
 ```php
 $uor = new UltimateOAuthRotate;
 
 (mixed)              $uor->__call      ( $name, $arguments );
+
 (Bool)               $uor->register    ( $name, $consumer_key, $consumer_secret );
 (Bool|Array)         $uor->login       ( $username, $password, $return_array=false );
 (Bool)               $uor->setCurrent  ( $name );
@@ -59,6 +60,21 @@ $uor = new UltimateOAuthRotate;
 ```
 
 ------------------------------------------------------------------
+
+0. マルチリクエスト設定
+-----------------------
+
+**UltimateOAuthConfig** の定数を編集してください。
+
+- 無料レンタルサーバーなどで `proc_open()` 関数が禁止されている場合
+  
+  > - `USE_PROC_OPEN`: **FALSE**
+  > - `FULL_URL_TO_THIS_FILE`: このファイル自身への**絶対URL**(絶対パスでは無い)
+  
+- `proc_open()` 関数が問題なく使える場合
+  
+  > - `USE_PROC_OPEN`: **TRUE** (デフォルト)
+  
 
 1. OAuth認証
 -----------------------

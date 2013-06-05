@@ -46,12 +46,13 @@ $uom = new UltimateOAuthMulti;
 
 ### UltimateOAuthRotate
 
-**UltimateOAuthRotate** supports all methods of **UltimateOAuth** mentioned above, by using **__call()**.
+**UltimateOAuthRotate** supports `get`, `post`, `OAuthRequest`, `OAuthRequestMultipart` of **UltimateOAuth**, by using **__call()**.
 
 ```php
 $uor = new UltimateOAuthRotate;
 
 (mixed)              $uor->__call      ( $name, $arguments );
+
 (Bool)               $uor->register    ( $name, $consumer_key, $consumer_secret );
 (Bool|Array)         $uor->login       ( $username, $password, $return_array=false );
 (Bool)               $uor->setCurrent  ( $name );
@@ -59,6 +60,21 @@ $uor = new UltimateOAuthRotate;
 ```
 
 ------------------------------------------------------------------
+
+0. Multiple Request Settings
+-----------------------
+
+Edit constants of **UltimateOAuthConfig**.
+
+- For the environment that proc_open() is disabled for security reasons
+  
+  > - `USE_PROC_OPEN`: **FALSE**
+  > - `FULL_URL_TO_THIS_FILE`: Not an absolute path, but an **absolute URL**.
+  
+- Otherwise
+  
+  > - `USE_PROC_OPEN`: **TRUE** (default)
+  
 
 1. OAuth Authentication
 -----------------------
