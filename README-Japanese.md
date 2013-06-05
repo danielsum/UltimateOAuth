@@ -69,7 +69,7 @@ $uor = new UltimateOAuthRotate;
 - 無料レンタルサーバーなどで `proc_open()` 関数が禁止されている場合
   
   > - `USE_PROC_OPEN`: **FALSE**
-  > - `FULL_URL_TO_THIS_FILE`: このファイル自身への**絶対URL**(絶対パスでは無い)
+  > - `FULL_URL_TO_THIS_FILE`: このファイル自身への **絶対URL** (絶対パスでは無い)
   
 - `proc_open()` 関数が問題なく使える場合
   
