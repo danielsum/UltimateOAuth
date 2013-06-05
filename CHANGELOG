@@ -1,6 +1,10 @@
 UltimateOAuth - changelog
 ========================
 
+5.1.1 (2013-06-06)
++ Set $timeout of fsockopen() to 5 sec.
++ Set $seconds of stream_set_timeout() to 60 sec.
+
 5.1.0 (2013-06-05)
 + UltimateOAuthConfig settings
 + UltimateOAuthModule::arrayfy()

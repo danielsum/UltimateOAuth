@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.1.0
+ * @Version: 5.1.1
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -368,9 +368,9 @@ class UltimateOAuth {
         }
         
         // Open socket
-        $fp = @fsockopen($host, $port);
+        $fp = @fsockopen($host, $port, $errno, $errstr, 5);
         if (!$fp) {
-            throw new RuntimeException('Failed to open socket.');
+            throw new RuntimeException($errstr);
         }
         
         // Send request
@@ -981,7 +981,7 @@ class UltimateOAuthMulti {
                 $uri['path'] = '/';
             }
             if (!isset($uri['port'])) {
-                $uri['port'] = $uri['scheme']==='https' ? 443 : 80;
+                $uri['port'] = $uri['scheme'] === 'https' ? 443 : 80;
             }
         }
         
@@ -994,12 +994,12 @@ class UltimateOAuthMulti {
                 continue;
             }
             $host = $uri['scheme'] === 'https' ? 'ssl://'.$uri['host'] : $uri['host'];
-            $fps[$i] = @fsockopen($host, $uri['port']);
+            $fps[$i] = @fsockopen($host, $uri['port'], $errno, $errstr, 5);
             if (!$fps[$i]) {
                 continue;
             }
             stream_set_blocking($fps[$i], 0);
-            stream_set_timeout($fps[$i], 86400);
+            stream_set_timeout($fps[$i], 60);
             $postfield = json_encode(array(
                 'uo' => array(
                     'consumer_key'          => $queue->uo->consumer_key,
@@ -1080,7 +1080,7 @@ class UltimateOAuthMulti {
             }
             // Socket opening failure
             if ($r === false) {
-                $res[$i] = UltimateOAuthModule::createErrorObject('Failed to open socket.');
+                $res[$i] = UltimateOAuthModule::createErrorObject($errstr);
                 continue;
             }
             // Getting contents failure
