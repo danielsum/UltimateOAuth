@@ -481,7 +481,7 @@ $uom->execute($wait_processes);
 
 =========================================
   
-### UltimateOAuthMulti::__construct()
+### UltimateOAuthRotate::__construct()
 
 ```php
 <?php
@@ -490,7 +490,7 @@ $uor = new UltimateOAuthRotate;
 
 =========================================
 
-### UltimateOAuthMulti::register()
+### UltimateOAuthRotate::register()
 
 あなた自身がTwitterに登録したアプリケーションをここで登録。
 
@@ -515,7 +515,7 @@ $uor->register($name, $consumer_key, $consumer_secret);
 =========================================
 
 
-### UltimateOAuthMulti::login()
+### UltimateOAuthRotate::login()
 
 登録されたアプリケーション全てでログインする。  
 このメソッドは内部的に **UltimateOAuthMulti** クラスを利用している。
@@ -546,7 +546,7 @@ $uor->login($username, $password, $return_array);
 
 =========================================
 
-### UltimateOAuthMulti::setCurrent()
+### UltimateOAuthRotate::setCurrent()
 
 **POST** リクエストで使われるアプリケーションを選択。  
 GETリクエストは無関係。
@@ -569,7 +569,7 @@ $uor->setCurrent($name);
 =========================================
 
 
-### UltimateOAuthMulti::getInstance($name)
+### UltimateOAuthRotate::getInstance($name)
 
 指定されたUltimateOAuthインスタンスの **クローン** を取得する。
 
@@ -590,7 +590,7 @@ $uor->getInstance($name);
 =========================================
 
 
-### UltimateOAuthMulti::__call()
+### UltimateOAuthRotate::__call()
 
 **UltimateOAuth** のメソッドをコールする。
 

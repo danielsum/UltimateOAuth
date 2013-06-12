@@ -477,7 +477,7 @@ Also you can use very useful **secret endpoints**, like:
 
 =========================================
   
-### UltimateOAuthMulti::__construct()
+### UltimateOAuthRotate::__construct()
 
 ```php
 <?php
@@ -486,7 +486,7 @@ $uor = new UltimateOAuthRotate;
 
 =========================================
 
-### UltimateOAuthMulti::register()
+### UltimateOAuthRotate::register()
 
 Register your own application.
 
@@ -512,7 +512,7 @@ $uor->register($name, $consumer_key, $consumer_secret);
 =========================================
 
 
-### UltimateOAuthMulti::login()
+### UltimateOAuthRotate::login()
 
 Login with all registered applications.
 This method depends on **UltimateOAuthMulti** class.
@@ -543,7 +543,7 @@ $uor->login($username, $password, $return_array);
 
 =========================================
 
-### UltimateOAuthMulti::setCurrent()
+### UltimateOAuthRotate::setCurrent()
 
 Select an application for **POST** requesting.
 GET requests have nothing to do with this.
@@ -566,7 +566,7 @@ $uor->setCurrent($name);
 =========================================
 
 
-### UltimateOAuthMulti::getInstance($name)
+### UltimateOAuthRotate::getInstance($name)
 
 Get **clone** of specified UltimateOAuth Instance.
 
@@ -587,7 +587,7 @@ $uor->getInstance($name);
 =========================================
 
 
-### UltimateOAuthMulti::__call()
+### UltimateOAuthRotate::__call()
 
 Call an **UltimateOAuth** method.
 
