@@ -262,7 +262,7 @@ $uo->OAuthRequest($endpoints, $method, $params, $wait_response);
 #### Return Value
 
 - If successfully, return decoded JSON.  
-  Basically it is returned as **stdClass**.
+  Basically it is returned as **stdClass**.  
   Some endpoints return **Array**.  
   Example: `statuses/home_timeline`, `users/lookup`  
   Some endpoints get **Query String**, but it is parsed and returned as **stdClass**.  
