@@ -594,7 +594,7 @@ Get **clones** of all UltimateOAuth Instance.
 
 ```php
 <?php
-$uor->getInstances();
+$uor->getInstances($type);
 ```
 
 #### Arguments

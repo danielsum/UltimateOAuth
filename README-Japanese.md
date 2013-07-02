@@ -598,7 +598,7 @@ $uor->getInstance($name);
 
 ```php
 <?php
-$uor->getInstances();
+$uor->getInstances($type);
 ```
 
 #### Arguments
