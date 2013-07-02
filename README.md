@@ -600,8 +600,8 @@ $uor->getInstances();
 #### Arguments
 
 - *__$type__*  
-  __0__ - Return all instances **(Default)**
-  __1__ - Return official instances
+  __0__ - Return all instances **(Default)**  
+  __1__ - Return official instances  
   __2__ - Return original instances
   
 #### Return Value
