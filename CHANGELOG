@@ -1,6 +1,12 @@
 UltimateOAuth - changelog
 ========================
 
+5.1.2 (2013-07-02)
++ Fixed UltimateOAuthRotate significant bugs
++ UltimateOAuth::$user_id
++ UltimateOAuth::$screen_name
++ UltimateOAuthRotate::getInstances()
+
 5.1.1 (2013-06-06)
 + Set $timeout of fsockopen() to 5 sec.
 + Set $seconds of stream_set_timeout() to 60 sec.

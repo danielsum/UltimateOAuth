@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.1.1
+ * @Version: 5.1.2
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -87,6 +87,8 @@ class UltimateOAuth {
     private $cookie;
     private $last_http_status_code;
     private $last_called_endpoint;
+    private $user_id;
+    private $screen_name;
     
     /***************************/
     /**** Interface Methods ****/
@@ -109,7 +111,9 @@ class UltimateOAuth {
         $authenticity_token    = '',
         $cookie                = array(),
         $last_http_status_code = 0,
-        $last_called_endpoint  = ''
+        $last_called_endpoint  = '',
+        $user_id               = '',
+        $screen_name           = ''
     ) {
         // Validate arguments and set them as properties
         $this->consumer_key          = UltimateOAuthModule::stringify($consumer_key)               ;
@@ -123,6 +127,8 @@ class UltimateOAuth {
         $this->cookie                = UltimateOAuthModule::arrayfy($cookie)                       ;
         $this->last_http_status_code = (int)UltimateOAuthModule::stringify($last_http_status_code) ;
         $this->last_called_endpoint  = UltimateOAuthModule::stringify($last_called_endpoint)       ;
+        $this->user_id               = UltimateOAuthModule::stringify($user_id)                    ;
+        $this->screen_name           = UltimateOAuthModule::stringify($screen_name)                ;
     }
     
     /*
@@ -552,7 +558,7 @@ class UltimateOAuth {
                 $cts_lines[] = '--'.$boundary.'--';
                 
                 // Combine contents lines
-                $contents = implode("\r\n",$cts_lines);
+                $contents = implode("\r\n", $cts_lines);
                 
                 // Add header lines
                 $adds = array(
@@ -641,8 +647,8 @@ class UltimateOAuth {
                     );
                 }
                 if (isset($oauth_tokens['user_id'], $oauth_tokens['screen_name'])) {
-                    $res->user_id     = $oauth_tokens['user_id'];
-                    $res->screen_name = $oauth_tokens['screen_name'];
+                    $this->user_id     = $res->user_id     = $oauth_tokens['user_id'];
+                    $this->screen_name = $res->screen_name = $oauth_tokens['screen_name'];
                 }
                 
             } else {
@@ -878,8 +884,7 @@ class UltimateOAuthMulti {
             1 => array('pipe', 'w'),
             2 => array('pipe', 'w'),
         );
-        $pipes = array();
-        $procs = array();
+        $procs = $pipes = $res = $err_flags = array();
         
         // Prepare PHP source
         $format = 
@@ -912,17 +917,17 @@ class UltimateOAuthMulti {
             stream_set_blocking($pipes[$i][1], 0);
             stream_set_blocking($pipes[$i][2], 0);
             // Bind values
-            $replace_pairs = array(
-                '\\' => '\\\\' ,
-                '\'' => '\\\'' ,
-            );
+            $adds = "\\'";
             $text = sprintf($format,
-                strtr($this->filename  , $replace_pairs),
-                strtr(serialize($queue), $replace_pairs)
+                addcslashes($this->filename  , $adds),
+                addcslashes(serialize($queue), $adds)
             );
             // Write PHP Source
             fwrite($pipes[$i][0], $text);
             fclose($pipes[$i][0]);
+            // Initialization
+            $res[$i] = '';
+            $err_flags[$i] = false;
         }
         
         // Return void if response is not necessary
@@ -933,33 +938,83 @@ class UltimateOAuthMulti {
         }
         
         // Get responses
-        $res = array();
-        foreach ($procs as $i => $proc) {
-            // Opening failure
-            if (!$proc) {
-                $res[$i] = UltimateOAuthModule::createErrorObject('Failed to start process.');
+        while (true) {
+            $break = true;
+            foreach ($pipes as $i => $pipe) {
+                if (!$procs[$i]) {
+                    $res[$i] = 'Failed to start process.';
+                    $err_flags[$i] = true;
+                    unset($pipes[$i]);
+                    continue;
+                }
+                while (!feof($pipe[1]) || !feof($pipe[2])) {
+                    // Select socket stream
+                    $ret = @stream_select(
+                        $read = array($pipe[1], $pipe[2]),
+                        $write = null,
+                        $except = null,
+                        $timeout = 5
+                    );  
+                    if (!$ret) {
+                        $res[$i] = 'Failed to select stream resource, or timeout.';
+                        $err_flags[$i] = true;
+                        fclose($pipe[1]);
+                        fclose($pipe[2]);
+                        proc_close($procs[$i]);
+                        unset($pipes[$i]);
+                        continue 2;
+                    }
+                    foreach ($read as $sock) {
+                        // Get data within 48000 bytes
+                        $tmp = fread($sock, 48000);
+                        if ($tmp === false) {
+                            $res[$i] = 'Failed to read buffer.';
+                            $err_flags[$i] = true;
+                            fclose($pipe[1]);
+                            fclose($pipe[2]);
+                            proc_close($procs[$i]);
+                            unset($pipes[$i]);
+                            continue 3;
+                        }
+                        $break = false;
+                        if ($sock === $pipe[2]) {
+                            if (!$err_flags[$i] && $tmp !== '') {
+                                $err_flags[$i] = true;
+                                $res[$i] = '';
+                            }
+                            $res[$i] .= $tmp;
+                            break;
+                        }
+                        if (!$err_flags[$i]) {
+                            $res[$i] .= $tmp;
+                        }
+                    }
+                }
+            }
+            if ($break) {
+                break;
+            }
+        }
+        
+        // Free resources
+        foreach ($pipes as $i => $pipe) {
+            fclose($pipe[1]);
+            fclose($pipe[2]);
+            proc_close($procs[$i]);
+        }
+        
+        // Optimize responses
+        $tmp = null;
+        foreach ($res as $i => $r) {
+            if ($err_flags[$i] || ($tmp = $i) === null || !is_array($r = @unserialize($r))) {
+                if ($tmp === $i) {
+                    $r = 'Failed to get valid response.';
+                }
+                $res[$i] = UltimateOAuthModule::createErrorObject(strip_tags($r));
                 continue;
             }
-            // Wait response
-            while (($status = proc_get_status($proc)) && $status['running']);
-            // Get contents
-            if (
-                ($p1 = stream_get_contents($pipes[$i][1])) === false ||
-                ($p2 = stream_get_contents($pipes[$i][2])) === false
-            ) {
-                $res[$i] = UltimateOAuthModule::createErrorObject('Failed to get stream contents.');
-            } elseif ($p2 !== '') {
-                $res[$i] = UltimateOAuthModule::createErrorObject(strip_tags($p2));
-            } elseif ($p1 === '' || ($r = @unserialize($p1)) === false) {
-                $res[$i] = UltimateOAuthModule::createErrorObject('Failed to get valid stream contents.');
-            } else {
-                $res[$i] = $r[1];
-                $this->queues[$i]->uo = $r[0];
-            }
-            // Free resource
-            fclose($pipes[$i][1]);
-            fclose($pipes[$i][2]);
-            proc_close($proc);
+            $res[$i] = $r[1];
+            $this->queues[$i]->uo = $r[0];
         }
         
         // Return responses
@@ -1013,6 +1068,8 @@ class UltimateOAuthMulti {
                     'cookie'                => $queue->uo->cookie,
                     'last_http_status_code' => $queue->uo->last_http_status_code,
                     'last_called_endpoint'  => $queue->uo->last_called_endpoint,
+                    'user_id'               => $queue->uo->user_id,
+                    'screen_name'           => $queue->uo->screen_name,
                 ),
                 'method' => $queue->method,
                 'args' => $queue->args,
@@ -1117,7 +1174,9 @@ class UltimateOAuthMulti {
                     $r->uo->authenticity_token,
                     $r->uo->cookie,
                     $r->uo->last_http_status_code,
-                    $r->uo->last_called_endpoint
+                    $r->uo->last_called_endpoint,
+                    $r->uo->uesr_id,
+                    $r->uo->screen_name
             )) {
                 $this->queues[$i]->uo = new UltimateOAuth(
                     $r->uo->consumer_key,
@@ -1130,7 +1189,9 @@ class UltimateOAuthMulti {
                     $r->uo->authenticity_token,
                     $r->uo->cookie,
                     $r->uo->last_http_status_code,
-                    $r->uo->last_called_endpoint
+                    $r->uo->last_called_endpoint,
+                    $r->uo->uesr_id,
+                    $r->uo->screen_name
                 );
             }
         }
@@ -1168,6 +1229,8 @@ class UltimateOAuthMulti {
                 $data->uo->cookie,
                 $data->uo->last_http_status_code,
                 $data->uo->last_called_endpoint,
+                $data->uo->uesr_id,
+                $data->uo->screen_name,
                 $data->method,
                 $data->args
             )
@@ -1190,7 +1253,9 @@ class UltimateOAuthMulti {
             $data->uo->authenticity_token,
             $data->uo->cookie,
             $data->uo->last_http_status_code,
-            $data->uo->last_called_endpoint
+            $data->uo->last_called_endpoint,
+            $data->uo->uesr_id,
+            $data->uo->screen_name
         );
         $method = UltimateOAuthModule::stringify($data->method);
         $args   = UltimateOAuthModule::arrayfy($data->args);
@@ -1232,6 +1297,8 @@ class UltimateOAuthMulti {
                 'cookie'                => $data->uo->cookie,
                 'last_http_status_code' => $data->uo->last_http_status_code,
                 'last_called_endpoint'  => $data->uo->last_called_endpoint,
+                'user_id'               => $data->uo->user_id,
+                'screen_name'           => $data->uo->screen_name,
             ),
         ));
         
@@ -1364,10 +1431,36 @@ class UltimateOAuthRotate {
     ) {
         foreach ($this->instances as $keys) {
             foreach ($keys as $key => $instance) {
-                return clone $instance;
+                if ((string)$key === $name) {
+                    return clone $instance;
+                }
             }
         }
         return false;
+    }
+    
+    /*
+     *  (array) getInstances() - Return the clones of all instances.
+     *  
+     *  $type  0 -> Return all instances
+     *         1 -> Return official instances
+     *         2 -> Return original instances
+     */
+    public function getInstances($type = 0) {
+        $type = abs((int)$type) % 3;
+        $ret = array();
+        foreach ($this->instances as $attr => $keys) {
+            if (
+                $type === 0 ||
+                $type === 1 && $attr === 'official'   ||
+                $type === 2 && $attr === 'original'
+            ) {
+                foreach ($keys as $key => $instance) {
+                    $ret[$key] = clone $instance;
+                }
+            }
+        }
+        return $ret;
     }
     
     /**************************/
@@ -1446,16 +1539,19 @@ class UltimateOAuthRotate {
                 // Initialize if necessary
                 if ($this->current['POST'] === null) {
                     if ($this->instances['original']) {
+                        reset($this->instances['original']);
                         $this->current['POST'] = array('original', key($this->instances['original']));
                     } else {
-                        $keys = array_keys($this->official);
+                        reset($this->instances['official']);
                         $this->current['POST'] = array('official', key($this->instances['official']));
                     }
                 }
                 
+                var_dump('hoge', $this->current['POST']);
+                
                 // Select instance
                 list($app_type, $app_name) = $this->current['POST'];
-                $obj = $this->{$app_type}[$app_name];
+                $obj = $this->instances[$app_type][$app_name];
                 
                 // Judge if official consumer_key necessary
                 foreach ($post_ex as $ex) {
@@ -1536,7 +1632,7 @@ class UltimateOAuthRotate {
 class UltimateOAuthModule {
     
     /*
-     *  (array) nksort() - Sort by natural order and return it
+     *  (array) nksort() - Sort by natural order and return it.
      */
     public static function nksort($arr) {
         uksort($arr, 'strnatcmp');

@@ -509,7 +509,7 @@ $uor->register($name, $consumer_key, $consumer_secret);
 
 #### 返り値
 
-- 結果を **TRUE か FALSE** で返します。
+- 結果を **TRUE か FALSE** で返す。
 
 
 =========================================
@@ -586,6 +586,31 @@ $uor->getInstance($name);
 #### 返り値
 
 - **UltimateOAuth** インスタンスか **FALSE** を返す。
+
+
+=========================================
+
+
+### UltimateOAuthRotate::getInstances()
+
+全てのUltimateOAuthインスタンスの **クローン** を取得する。
+
+```php
+<?php
+$uor->getInstances();
+```
+
+#### Arguments
+
+- *__$type__*  
+  __0__ - 全てのインスタンスを返す **(Default)**
+  __1__ - 公式キーのみのインスタンスを返す
+  __2__ - オリジナルキーのみのインスタンスを返す
+  
+#### Return Value
+
+- UltimateOAuthオブジェクトの **配列** を返す。
+
 
 =========================================
 

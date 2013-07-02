@@ -587,6 +587,30 @@ $uor->getInstance($name);
 =========================================
 
 
+### UltimateOAuthRotate::getInstances()
+
+Get **clones** of all UltimateOAuth Instance.
+
+```php
+<?php
+$uor->getInstances();
+```
+
+#### Arguments
+
+- *__$type__*  
+  __0__ - Return all instances **(Default)**
+  __1__ - Return official instances
+  __2__ - Return original instances
+  
+#### Return Value
+
+- Return an **Array**, collection of the UltimateOAuth instances.
+
+
+=========================================
+
+
 ### UltimateOAuthRotate::__call()
 
 Call an **UltimateOAuth** method.
