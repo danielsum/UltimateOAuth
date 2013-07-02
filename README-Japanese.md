@@ -51,12 +51,13 @@ $uom = new UltimateOAuthMulti;
 ```php
 $uor = new UltimateOAuthRotate;
 
-(mixed)              $uor->__call      ( $name, $arguments );
+(mixed)              $uor->__call       ( $name, $arguments );
 
-(Bool)               $uor->register    ( $name, $consumer_key, $consumer_secret );
-(Bool|Array)         $uor->login       ( $username, $password, $return_array=false );
-(Bool)               $uor->setCurrent  ( $name );
-(UltimateOAuth|Bool) $uor->getInstance ( $name );
+(Bool)               $uor->register     ( $name, $consumer_key, $consumer_secret );
+(Bool|Array)         $uor->login        ( $username, $password, $return_array=false );
+(Bool)               $uor->setCurrent   ( $name );
+(UltimateOAuth|Bool) $uor->getInstance  ( $name );
+(Array)              $uor->getInstances ( );
 ```
 
 ------------------------------------------------------------------
