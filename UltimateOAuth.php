@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.1.2
+ * @Version: 5.1.3
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -1076,7 +1076,7 @@ class UltimateOAuthMulti {
             ));
             $postfield = http_build_query(array(
                 UltimateOAuthConfig::MULTIPLE_REQUEST_KEY_NAME => $postfield,
-            ), '', '&', PHP_QUERY_RFC3986);
+            ), '', '&');
             $length = strlen($postfield);
             $user_agent = UltimateOAuthConfig::USER_AGENT;
             $header = 
