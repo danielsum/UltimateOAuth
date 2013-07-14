@@ -471,7 +471,7 @@ $uom->execute($wait_processes);
 - `GET statuses/:id/activity/summary`  
   指定されたツイートに関するアクティビティを取得。
 - `GET conversation/show/:id`  
-  指定されたツイートに含む会話を取得。
+  指定されたツイートを含む会話を取得。
 
 - `POST friendships/accept`  
   指定されたフォローリクエストを受理する。
@@ -601,14 +601,14 @@ $uor->getInstance($name);
 $uor->getInstances($type);
 ```
 
-#### Arguments
+#### 引数
 
 - *__$type__*  
   __0__ - 全てのインスタンスを返す **(Default)**  
   __1__ - 公式キーのみのインスタンスを返す  
   __2__ - オリジナルキーのみのインスタンスを返す
   
-#### Return Value
+#### 返り値
 
 - UltimateOAuthオブジェクトの **配列** を返す。
 
