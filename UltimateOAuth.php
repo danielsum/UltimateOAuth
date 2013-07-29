@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.1.3
+ * @Version: 5.1.4
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -1546,8 +1546,6 @@ class UltimateOAuthRotate {
                         $this->current['POST'] = array('official', key($this->instances['official']));
                     }
                 }
-                
-                var_dump('hoge', $this->current['POST']);
                 
                 // Select instance
                 list($app_type, $app_name) = $this->current['POST'];
