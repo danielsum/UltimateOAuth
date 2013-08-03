@@ -6,7 +6,7 @@
 
 /* A highly advanced Twitter library in PHP.
  * 
- * @Version: 5.1.4
+ * @Version: 5.1.5
  * @Author : CertaiN
  * @License: FreeBSD
  * @GitHub : http://github.com/certainist/UltimateOAuth
@@ -367,7 +367,7 @@ class UltimateOAuth {
         
         // Determine port
         if ($scheme === 'https') {
-            $host = 'ssl://'.$host; // When using "https://"
+            $host = 'ssl://' . $host; // When using "https://"
             $port = 443;
         } else {
             $port = 80;
@@ -380,7 +380,7 @@ class UltimateOAuth {
         }
         
         // Send request
-        if (@fwrite($fp, $request) === false) {
+        if (fwrite($fp, $request) === false) {
             if ($fp) {
                 fclose($fp);
             }
@@ -471,7 +471,7 @@ class UltimateOAuth {
                                 throw new InvalidArgumentException("File \"{$value}\" not found.");
                             }
                             // Base64-encode binaries
-                            $_params[substr($key,1)] = base64_encode(@file_get_contents($value));
+                            $_params[substr($key, 1)] = base64_encode(@file_get_contents($value));
                         } else {
                             $_params[$key] = $value;
                         }
@@ -483,7 +483,7 @@ class UltimateOAuth {
                 
                 // Get query string for OAuth authorization
                 $query = $this->getQueryString(
-                    $elements['scheme'].'://'.$elements['host'].$elements['path'],
+                    $elements['scheme'] . '://' . $elements['host'] . $elements['path'],
                     $elements['path'],
                     $method,
                     $params,
@@ -498,40 +498,40 @@ class UltimateOAuth {
             
             // Build path
             if ($method === 'GET' && !$multipart) {
-                $path = $elements['path'].'?'.$query;
+                $path = $elements['path'] . '?' . $query;
             } else {
                 $path = $elements['path'];
             }
                 
             // Build header lines
             $lines = array(
-                sprintf('%s %s HTTP/1.0',strtoupper($method),$path),
-                'Host: '       . $elements['host']               ,
-                'User-Agent: ' . UltimateOAuthConfig::USER_AGENT ,
-                'Connection: ' . 'Close'                         ,
-                "\r\n"                                           ,
+                sprintf('%s %s HTTP/1.0', strtoupper($method), $path),
+                'Host: '       . $elements['host']                   ,
+                'User-Agent: ' . UltimateOAuthConfig::USER_AGENT     ,
+                'Connection: ' . 'Close'                             ,
+                "\r\n"                                               ,
             );
             
             // Add cookies
             if ($this->cookie) {
                 array_splice($lines, -1, 0, array(
-                    'Cookie: '.implode('; ',UltimateOAuthModule::pairize($this->cookie)),
+                    'Cookie: ' . implode('; ', UltimateOAuthModule::pairize($this->cookie)),
                 ));
             }
             
             if ($multipart) {
             
                 // Generate boundary
-                $boundary = '--------------'.sha1($_SERVER['REQUEST_TIME']);
+                $boundary = '--------------' . sha1($_SERVER['REQUEST_TIME']);
                 
                 // Build contents lines
                 $cts_lines = array();
                 foreach ($params as $key => $value) {
-                    $cts_lines[] = '--'.$boundary;
+                    $cts_lines[] = '--' . $boundary;
                     // Convert file names to file binaries
                     if (strpos($key, '@') === 0) {
                         $value = UltimateOAuthModule::stringify($value);
-                        if ($value !=='0' && !$value) {
+                        if ($value !== '0' && !$value) {
                             throw new InvalidArgumentException("Filename is empty.");
                         }
                         if (!is_file($value)) {
@@ -555,16 +555,16 @@ class UltimateOAuth {
                         $is_file ? @file_get_contents($value) : $value
                     );
                 }
-                $cts_lines[] = '--'.$boundary.'--';
+                $cts_lines[] = '--' . $boundary . '--';
                 
                 // Combine contents lines
                 $contents = implode("\r\n", $cts_lines);
                 
                 // Add header lines
                 $adds = array(
-                    'Authorization: '  . 'OAuth '.$query                            ,
-                    'Content-Type: '   . 'multipart/form-data; boundary='.$boundary ,
-                    'Content-Length: ' . strlen($contents)                          ,
+                    'Authorization: '  . 'OAuth ' . $query                            ,
+                    'Content-Type: '   . 'multipart/form-data; boundary=' . $boundary ,
+                    'Content-Length: ' . strlen($contents)                            ,
                 );
                 array_splice($lines, -1, 0, $adds);
                 
@@ -888,14 +888,14 @@ class UltimateOAuthMulti {
         
         // Prepare PHP source
         $format = 
-            '<?php '.PHP_EOL.
-            'ob_start(); '.PHP_EOL.
-            'require(\'%s\'); '.PHP_EOL.
-            '$s = unserialize(\'%s\'); '.PHP_EOL.
-            '$res = call_user_func_array(array($s->uo, $s->method), $s->args); '.PHP_EOL.
-            '$res = serialize(array($s->uo, $res)); '.PHP_EOL.
-            'ob_end_clean(); '.PHP_EOL.
-            'echo $res; '.PHP_EOL.
+            '<?php ' . PHP_EOL . 
+            'ob_start(); ' . PHP_EOL . 
+            'require(\'%s\'); ' . PHP_EOL . 
+            '$s = unserialize(\'%s\'); ' . PHP_EOL . 
+            '$res = call_user_func_array(array($s->uo, $s->method), $s->args); ' . PHP_EOL . 
+            '$res = serialize(array($s->uo, $res)); ' . PHP_EOL . 
+            'ob_end_clean(); ' . PHP_EOL . 
+            'echo $res; ' . PHP_EOL . 
             'exit();'
         ;
         
@@ -1580,7 +1580,7 @@ class UltimateOAuthRotate {
     /*
      *  (array) getOfficialKeys() - Let's take advantage of leaked consumer_key 
      */
-    private static function getOfficialKeys($include_signup = false) {
+    public static function getOfficialKeys($include_signup = false) {
         $ret = array(
             'Twitter for iPhone' => array(
                 'consumer_key'    => 'IQKbtAYlXLripLGPWd0HUA',
@@ -1650,7 +1650,7 @@ class UltimateOAuthModule {
     public static function pairize($arr) {
         $ret = array();
         foreach ($arr as $key => $value) {
-            $ret[] = $key.'='.$value;
+            $ret[] = $key . '=' . $value;
         }
         return $ret;
     }
@@ -1712,7 +1712,7 @@ class UltimateOAuthModule {
             default:
                 $errno = 'Unknown error';
         }
-        printf('PHP %s:  %s in %s on line %d'.PHP_EOL,
+        printf('PHP %s:  %s in %s on line %d' . PHP_EOL . 
             $errno, $errstr, $errfile, $errline
         );
         return true;
@@ -1739,20 +1739,20 @@ class UltimateOAuthModule {
                     strpos($elements['path'], 'activity/')  === 0 ||
                     strpos($elements['path'], '/activity/') !== false
                 ) {
-                    $elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION.'/'.$elements['path'];
+                    $elements['path'] = '/' . UltimateOAuthConfig::DEFAULT_ACTIVITY_API_VERSION . '/' . $elements['path'];
                 } elseif (
                     strpos($elements['path'], 'oauth/')  !== 0 &&
                     strpos($elements['path'], 'oauth2/') !== 0
                 ) {
-                    $elements['path'] = '/'.UltimateOAuthConfig::DEFAULT_API_VERSION.'/'.$elements['path'];
+                    $elements['path'] = '/' . UltimateOAuthConfig::DEFAULT_API_VERSION . '/' . $elements['path'];
                 } else {
-                    $elements['path'] = '/'.$elements['path'];
+                    $elements['path'] = '/' . $elements['path'];
                     $is_oauth = true;
                 }
             } else {
                 $elements['path'] = '/'.$elements['path'];
             }
-            if (!isset($is_oauth) && !preg_match('@/[^/]*+\\.[^/.]++$@', $elements['path'])) {
+            if (!isset($is_oauth) && !preg_match('@\\.\\w++$@', $elements['path'])) {
                 $elements['path'] .= '.json';
             }
         } elseif (!isset($elements['path'])) {

@@ -1,6 +1,9 @@
 UltimateOAuth - changelog
 ========================
 
+5.1.5 (2013-08-03)
+- Modified endpoint parser regex.
+
 5.1.4 (2013-07-29)
 - Eliminated wasteful var_dump().
 
